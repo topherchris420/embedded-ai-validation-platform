@@ -40,7 +40,7 @@ the tree as an architecture-decision record.
    command hard-coded the same list a third time.
 6. **Dangling references**: `configs/default.yaml` pointed at
    `datasets/imu_run1.csv` and a `.tflite` model that were not in the repo;
-   the README linked to `CONTRIBUTING.md`, `docs/hardware.md`, and
+   the README linked to `CONTRIBUTING.md`, `docs/hardware-support.md`, and
    `docs/config-reference.md`, none of which existed.
 7. **Dependency drift**: `requirements.txt` duplicated `pyproject.toml`
    dependencies but was missing `pydantic`.

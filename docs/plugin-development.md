@@ -14,6 +14,7 @@ of the type's interface. Core code never needs modification.
 | `fault` | `eaiv.hil.Fault` | `noise`, `packet_loss`, `jitter`, `outage` | `hil.faults[].kind` |
 | `power_monitor` | `eaiv.power.PowerMonitor` | `sim` | `tinyml.power.kind` |
 | `telemetry_adapter` | `eaiv.telemetry.TelemetryAdapter` | `eaiv-line` | `eaiv monitor --adapter` |
+| `suite` | `run() -> SuiteResult` | (none built-in) | `extra_suites.<name>` |
 | `sensor` | `eaiv.plugins.sensors.Sensor` | (bases only) | — |
 | `benchmark` | `eaiv.plugins.benchmarks.Benchmark` | (bases only) | — |
 

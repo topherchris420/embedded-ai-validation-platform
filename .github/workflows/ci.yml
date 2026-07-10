@@ -115,6 +115,9 @@ jobs:
       - name: Install package
         run: pip install -e .
 
+      - name: Validate committed datasets
+        run: eaiv datasets validate datasets/
+
       - name: Run all suites against the simulated target
         run: eaiv run --config configs/sim.yaml --suite all --report-dir reports
 

@@ -98,5 +98,5 @@ dashboard's Compare page is the interactive view of the same engine.
 See also: [architecture.md](architecture.md),
 [config-reference.md](config-reference.md),
 [plugin-development.md](plugin-development.md),
-[hardware.md](hardware.md), [../CONTRIBUTING.md](../CONTRIBUTING.md),
+[hardware.md](hardware-support.md), [../CONTRIBUTING.md](../CONTRIBUTING.md),
 [../ROADMAP.md](../ROADMAP.md).

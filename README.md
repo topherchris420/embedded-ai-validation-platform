@@ -151,7 +151,7 @@ eaiv targets                              # target backends only
 | RPi Pico | RP2040 (Cortex-M0+) | ✅ |
 | RPi Zero 2 W | ARM Cortex-A53 | 🔜 |
 
-Firmware for every ✅ board is built in CI; see [docs/hardware.md](docs/hardware.md)
+Firmware for every ✅ board is built in CI; see [docs/hardware-support.md](docs/hardware-support.md)
 for target-backend details and how to add a board.
 
 ## 📊 Benchmark Metrics
@@ -227,16 +227,19 @@ GitHub Actions workflows are included for:
 
 ## 📚 Documentation
 
+- [Getting Started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
+- [Benchmarking Guide](docs/benchmarking.md)
 - [Usage Guide](docs/usage.md)
 - [Configuration Reference](docs/config-reference.md)
-- [Supported Hardware](docs/hardware.md)
+- [Supported Hardware](docs/hardware-support.md)
 - [Developer Guide](docs/developer-guide.md)
 - [Plugin Development](docs/plugin-development.md)
 - [HIL Testing](hil/README.md)
 - [Firmware](firmware/README.md)
 - [Benchmarks](benchmarks/README.md)
 - [Dashboard](dashboard/README.md)
+- [Examples](examples/README.md)
 - [Migration Plan / ADR](docs/migration-plan.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)

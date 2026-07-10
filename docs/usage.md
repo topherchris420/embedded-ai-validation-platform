@@ -28,6 +28,10 @@ eaiv flash build/firmware.elf --config configs/stm32h7.yaml
 eaiv monitor --config configs/esp32.yaml --duration 10
 eaiv datasets generate --profile gentle --duration 20 --seed 42 -o log.csv
 eaiv compare baseline.json reports/latest.json --max-regression-pct 10
+eaiv baseline save reports/latest.json --name release-1   # named baselines
+eaiv baseline list
+eaiv datasets validate datasets/                          # metadata checks
+eaiv pipeline --config configs/sim.yaml --baseline release-1  # full CI flow
 ```
 
 `eaiv run` exits with status `0` if every executed suite passed, `1`
