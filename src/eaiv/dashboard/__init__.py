@@ -10,8 +10,10 @@ from __future__ import annotations
 from eaiv.dashboard.data import (
     latency_percentiles,
     load_reports,
+    metric_by_target,
     metric_history,
     numeric_metrics,
+    report_target,
     suite_status,
 )
 
@@ -21,4 +23,6 @@ __all__ = [
     "numeric_metrics",
     "latency_percentiles",
     "suite_status",
+    "report_target",
+    "metric_by_target",
 ]

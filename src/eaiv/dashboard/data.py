@@ -59,6 +59,29 @@ def metric_history(reports: list[dict], suite: str, metric: str) -> list[tuple[s
     return series
 
 
+def report_target(report: dict) -> str:
+    """Board identity a report was produced on ("?" for legacy reports)."""
+    target = report.get("meta", {}).get("target", {})
+    name = target.get("name") or target.get("kind") or "?"
+    return str(name)
+
+
+def metric_by_target(reports: list[dict], suite: str, metric: str) -> dict[str, float]:
+    """Latest value of one metric per target — the cross-hardware view.
+
+    Reports are newest-first; the first hit per target wins.
+    """
+    out: dict[str, float] = {}
+    for report in reports:
+        target = report_target(report)
+        if target in out:
+            continue
+        metrics = numeric_metrics(report, suite)
+        if metric in metrics:
+            out[target] = metrics[metric]
+    return out
+
+
 _PERCENTILE_KEYS = ("min_ms", "p50_ms", "mean_ms", "p95_ms", "p99_ms", "max_ms")
 
 

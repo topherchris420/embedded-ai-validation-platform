@@ -73,6 +73,28 @@ class RegressionReport:
     def passed(self) -> bool:
         return not self.regressions
 
+    def counts(self, epsilon_pct: float = 1.0) -> dict[str, int]:
+        """Answer "is this release better or worse?": per-metric verdicts.
+
+        improved: moved in the good direction by more than epsilon;
+        regressed: beyond the gate threshold (as flagged at compare time);
+        unchanged: within epsilon or below the gate; informational:
+        direction unknown, never gates.
+        """
+        out = {"improved": 0, "regressed": 0, "unchanged": 0, "informational": 0}
+        for d in self.deltas:
+            if d.direction == 0:
+                out["informational"] += 1
+            elif d.regressed:
+                out["regressed"] += 1
+            elif (d.direction > 0 and d.change_pct > epsilon_pct) or (
+                d.direction < 0 and d.change_pct < -epsilon_pct
+            ):
+                out["improved"] += 1
+            else:
+                out["unchanged"] += 1
+        return out
+
 
 def compare_reports(
     baseline: dict,

@@ -36,8 +36,10 @@ from eaiv.core.regression import compare_reports
 from eaiv.dashboard import (
     latency_percentiles,
     load_reports,
+    metric_by_target,
     metric_history,
     numeric_metrics,
+    report_target,
     suite_status,
 )
 
@@ -62,11 +64,12 @@ def page_overview(reports: list[dict]) -> None:
     rows = suite_status(latest)
     passed_runs = sum(1 for r in reports if r.get("all_passed"))
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Recorded runs", len(reports))
     c2.metric("Run pass rate", f"{passed_runs / len(reports):.0%}")
     c3.metric("Latest run", str(latest.get("timestamp", ""))[:19])
-    c4.metric("Latest verdict", "PASS" if latest.get("all_passed") else "FAIL")
+    c4.metric("Target", report_target(latest))
+    c5.metric("Latest verdict", "PASS" if latest.get("all_passed") else "FAIL")
 
     st.divider()
     st.subheader("Latest run")
@@ -110,6 +113,14 @@ def page_benchmarks(reports: list[dict]) -> None:
 
     st.subheader("Metric history across runs")
     metric = st.selectbox("Metric", sorted(latest_metrics.keys()))
+
+    by_target = metric_by_target(reports, suite, metric)
+    if len(by_target) > 1:
+        st.subheader("By hardware (latest run per target)")
+        fig = go.Figure(go.Bar(x=list(by_target.keys()), y=list(by_target.values())))
+        fig.update_layout(xaxis_title="target", yaxis_title=metric)
+        st.plotly_chart(fig, use_container_width=True)
+
     series = metric_history(reports, suite, metric)
     if len(series) < 2:
         st.info("Need at least two recorded runs for a trend — showing latest value.")
@@ -177,10 +188,19 @@ def page_compare(reports: list[dict]) -> None:
     threshold = st.slider("Max regression (%)", 1.0, 50.0, 10.0)
 
     result = compare_reports(reports[baseline_i], reports[current_i], max_regression_pct=threshold)
+    counts = result.counts()
+    verdict = "WORSE" if counts["regressed"] else ("BETTER" if counts["improved"] else "NEUTRAL")
     if result.passed:
-        st.success(f"No regressions across {len(result.deltas)} shared metrics")
+        st.success(
+            f"Release verdict: {verdict} — improved {counts['improved']}, "
+            f"unchanged {counts['unchanged']}, regressed {counts['regressed']} "
+            f"(of {len(result.deltas)} shared metrics)"
+        )
     else:
-        st.error(f"{len(result.regressions)} regression(s) beyond {threshold}%")
+        st.error(
+            f"Release verdict: {verdict} — {counts['regressed']} regression(s) beyond "
+            f"{threshold}%, improved {counts['improved']}, unchanged {counts['unchanged']}"
+        )
     if result.deltas:
         # Rendered as Markdown rather than st.dataframe: a static diff table
         # needs no sorting UI, and this render path is identical to the
