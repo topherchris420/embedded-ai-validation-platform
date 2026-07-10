@@ -102,9 +102,19 @@ def flash(binary: str, config_path: str) -> None:
 @main.command()
 @click.option("--config", "config_path", required=True, type=click.Path(exists=True))
 @click.option("--duration", "duration_s", default=10.0, help="Seconds to read serial output.")
-def monitor(config_path: str, duration_s: float) -> None:
-    """Stream serial output from the configured target."""
+@click.option("--adapter", default="eaiv-line", help="Telemetry adapter plugin to parse with.")
+@click.option("--csv", "csv_path", default=None, type=click.Path(), help="Export telemetry CSV.")
+@click.option("--summary", is_flag=True, help="Print per-field statistics instead of raw output.")
+def monitor(
+    config_path: str, duration_s: float, adapter: str, csv_path: str | None, summary: bool
+) -> None:
+    """Stream serial output from the configured target.
+
+    With --csv/--summary the output is parsed through the telemetry
+    adapter into structured records instead of echoed raw.
+    """
     from eaiv.targets import build_target
+    from eaiv.telemetry import TelemetryCollector, build_adapter
 
     _load_all_plugins()
     cfg = load_config(config_path)
@@ -112,7 +122,28 @@ def monitor(config_path: str, duration_s: float) -> None:
         binary = cfg["target"].get("binary")
         if binary:
             target.flash(binary)
-        click.echo(target.read_serial(duration_s), nl=False)
+        raw = target.read_serial(duration_s)
+
+    if not csv_path and not summary:
+        click.echo(raw, nl=False)
+        return
+
+    collector = TelemetryCollector(build_adapter(adapter))
+    collector.feed(raw)
+    if csv_path:
+        path = collector.to_csv(csv_path)
+        click.echo(f"wrote {len(collector.telemetry)} samples to {path}")
+    if summary:
+        stats = collector.summary()
+        click.echo(f"samples={stats.samples} duration_s={stats.duration_s} rate_hz={stats.rate_hz}")
+        for name, st in stats.fields.items():
+            click.echo(
+                f"  {name:<12} min={st['min']:+.5f} max={st['max']:+.5f} "
+                f"mean={st['mean']:+.5f} std={st['std']:.5f}"
+            )
+        verdict = collector.verdict
+        if verdict is not None:
+            click.echo(f"verdict: {'PASS' if verdict.passed else 'FAIL ' + verdict.reason}")
 
 
 @main.group()
