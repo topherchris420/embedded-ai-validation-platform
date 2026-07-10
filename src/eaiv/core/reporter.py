@@ -20,11 +20,17 @@ class Reporter:
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.console = Console()
 
-    def publish(self, results: AggregateResult) -> None:
+    def publish(self, results: AggregateResult, metadata: dict | None = None) -> None:
+        """Write all report artifacts.
+
+        ``metadata`` (target identity, platform version) is embedded in the
+        JSON payload and shown in the Markdown header so results stay
+        comparable across boards and releases.
+        """
         self._console(results)
-        self._json(results)
+        self._json(results, metadata)
         self._csv(results)
-        self._markdown(results)
+        self._markdown(results, metadata)
         self._html(results)
 
     def _console(self, results: AggregateResult) -> None:
@@ -42,10 +48,11 @@ class Reporter:
             )
         self.console.print(t)
 
-    def _json(self, results: AggregateResult) -> None:
+    def _json(self, results: AggregateResult, metadata: dict | None = None) -> None:
         ts = datetime.now(timezone.utc).isoformat()
         payload = {
             "timestamp": ts,
+            "meta": metadata or {},
             "suites": [asdict(s) for s in results],
             "all_passed": results.all_passed(),
         }
@@ -65,14 +72,20 @@ class Reporter:
                 for key, value in s.metrics.items():
                     writer.writerow([s.name, key, value, s.passed])
 
-    def _markdown(self, results: AggregateResult) -> None:
+    def _markdown(self, results: AggregateResult, metadata: dict | None = None) -> None:
         """Markdown summary — renders directly in PRs and CI job summaries."""
         ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        target = (metadata or {}).get("target", {})
+        target_line = ""
+        if target:
+            desc = target.get("name") or target.get("kind", "")
+            arch = f" ({target['arch']})" if target.get("arch") else ""
+            target_line = f"Target: {desc}{arch}  \n"
         lines = [
             "# eaiv validation report",
             "",
             f"Generated: {ts}  ",
-            f"Overall: {'**PASS**' if results.all_passed() else '**FAIL**'}",
+            target_line + f"Overall: {'**PASS**' if results.all_passed() else '**FAIL**'}",
             "",
             "| Suite | Status | Notes |",
             "|-------|--------|-------|",

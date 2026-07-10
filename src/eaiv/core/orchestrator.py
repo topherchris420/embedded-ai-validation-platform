@@ -1,19 +1,44 @@
-"""Top-level orchestrator that runs suites and aggregates results."""
+"""Top-level orchestrator that runs suites and aggregates results.
+
+Built-in suites are wired explicitly (they share the target lifecycle);
+external suites register as ``suite`` plugins and are listed in the
+config's ``extra_suites`` mapping — no core changes needed:
+
+    extra_suites:
+      my_suite: {threshold: 3.0}
+
+    @register_plugin("my_suite", "suite", "My validation suite")
+    class MySuite:
+        def __init__(self, spec: dict) -> None: ...
+        def run(self) -> SuiteResult: ...
+"""
 
 from __future__ import annotations
 
+from typing import Protocol
+
+from eaiv.benchmarks.memory import MemoryBenchmark
 from eaiv.config import Config
 from eaiv.core.reporter import Reporter
 from eaiv.core.results import AggregateResult, SuiteResult
-from eaiv.benchmarks.memory import MemoryBenchmark
 from eaiv.firmware.tester import FirmwareTester
 from eaiv.hil.suite import HILExperiment
+from eaiv.plugins import get_registry
+from eaiv.plugins.targets import Target
 from eaiv.rt_perf.profiler import RTProfiler
 from eaiv.sensor_fusion.experiments import FusionExperiment
 from eaiv.targets import build_target
 from eaiv.tinyml.benchmark import TinyMLBenchmark
 
-__all__ = ["Orchestrator", "SuiteResult", "AggregateResult"]
+__all__ = ["Orchestrator", "SuiteResult", "AggregateResult", "BUILTIN_SUITES"]
+
+BUILTIN_SUITES = ("firmware", "tinyml", "fusion", "hil", "memory", "rt")
+
+
+class SuiteRunner(Protocol):
+    """Structural interface for pluggable suites."""
+
+    def run(self) -> SuiteResult: ...
 
 
 class Orchestrator:
@@ -28,6 +53,11 @@ class Orchestrator:
         self.reporter = Reporter(report_dir)
 
     def run(self, suite: str) -> AggregateResult:
+        extra: dict = self.cfg.get("extra_suites", {}) or {}
+        known = set(BUILTIN_SUITES) | set(extra) | {"all"}
+        if suite not in known:
+            raise ValueError(f"Unknown suite: {suite!r}. Available: {sorted(known)}")
+
         results = AggregateResult()
         target = build_target(self.cfg["target"]) if self._needs_target(suite) else None
 
@@ -47,8 +77,33 @@ class Orchestrator:
             assert target is not None
             results.add(RTProfiler(self.cfg["rt_perf"], target).run())
 
-        self.reporter.publish(results)
+        registry = get_registry()
+        for name, spec in extra.items():
+            if suite not in (name, "all"):
+                continue
+            runner = registry.create("suite", name, spec or {})
+            result = runner.run()  # type: ignore[attr-defined]
+            if not isinstance(result, SuiteResult):
+                raise TypeError(f"Suite plugin {name!r} returned {type(result)!r}")
+            results.add(result)
+
+        self.reporter.publish(results, metadata=self._metadata(target))
         return results
+
+    def _metadata(self, target: Target | None) -> dict:
+        """Report metadata that makes results comparable across boards."""
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            eaiv_version = version("eaiv")
+        except PackageNotFoundError:
+            eaiv_version = "unknown"
+
+        target_meta: dict = {"kind": self.cfg.get("target", {}).get("kind", "none")}
+        if target is not None:
+            info = target.info()
+            target_meta.update({"name": info.name, "arch": info.arch, "clock_hz": info.clock_hz})
+        return {"eaiv_version": eaiv_version, "target": target_meta}
 
     @staticmethod
     def _needs_target(suite: str) -> bool:

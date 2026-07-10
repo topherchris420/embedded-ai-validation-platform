@@ -32,16 +32,20 @@ def main() -> None:
 @click.option("--config", "config_path", required=True, type=click.Path(exists=True))
 @click.option(
     "--suite",
-    type=click.Choice(["firmware", "tinyml", "fusion", "hil", "memory", "rt", "all"]),
     default="all",
-    help="Which validation suite to run.",
+    help="Suite to run: firmware | tinyml | fusion | hil | memory | rt | all, "
+    "or any 'suite' plugin listed under extra_suites in the config.",
 )
 @click.option("--report-dir", default="reports", type=click.Path())
 def run(config_path: str, suite: str, report_dir: str) -> None:
     """Run a validation suite and exit non-zero on any failure."""
+    _load_all_plugins()
     cfg = load_config(config_path)
     orch = Orchestrator(cfg, report_dir=report_dir)
-    results = orch.run(suite)
+    try:
+        results = orch.run(suite)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--suite") from None
     sys.exit(0 if results.all_passed() else 1)
 
 
