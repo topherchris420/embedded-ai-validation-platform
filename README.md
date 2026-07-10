@@ -1,11 +1,6 @@
 # Embedded AI Validation Platform
 
-A validation, benchmarking, and profiling framework for embedded AI systems
-on resource-constrained hardware. It occupies the role of pytest +
-PlatformIO + MLPerf Tiny + hardware telemetry for embedded targets:
-firmware-level test execution, reproducible TinyML benchmarks, sensor-fusion
-validation, hardware-in-the-loop fault injection, and CI regression gating,
-against real boards or a fully simulated device.
+This brings the rigor of software testing and continuous integration to the physical world of edge AI. It enables engineers to stress-test, profile, and validate TinyML models across hardware constraints, sensor variability, and real-world conditions before they reach production devices.
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![Typed](https://img.shields.io/badge/mypy-strict-blue)
