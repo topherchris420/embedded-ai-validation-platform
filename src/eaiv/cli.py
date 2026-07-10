@@ -189,7 +189,23 @@ def datasets_generate(
         accel_noise_std=accel_noise_std,
     )
     path = write_imu_csv(samples, output)
-    click.echo(f"wrote {len(samples)} samples to {path}")
+    from eaiv.datasets import imu_metadata, write_metadata
+
+    meta = imu_metadata(
+        name=path.stem,
+        description=f"Synthetic IMU log ({profile} profile, seed {seed})",
+        sampling_rate_hz=rate_hz,
+        generator={
+            "profile": profile,
+            "seed": seed,
+            "duration_s": duration_s,
+            "rate_hz": rate_hz,
+            "gyro_noise_std": gyro_noise_std,
+            "accel_noise_std": accel_noise_std,
+        },
+    )
+    meta_path = write_metadata(meta, path)
+    click.echo(f"wrote {len(samples)} samples to {path} (+ {meta_path.name})")
 
 
 @main.command()
@@ -282,6 +298,34 @@ def baseline_show(name: str, root: str) -> None:
     from eaiv.core.baseline import BaselineStore
 
     click.echo(json.dumps(BaselineStore(root).load(name), indent=2))
+
+
+@datasets.command("validate")
+@click.argument("paths", nargs=-1, required=True, type=click.Path(exists=True))
+def datasets_validate(paths: tuple[str, ...]) -> None:
+    """Validate dataset CSVs against their metadata sidecars.
+
+    PATHS are CSV files or directories (scanned recursively). Exits
+    non-zero if any dataset is invalid.
+    """
+    from pathlib import Path
+
+    from eaiv.datasets import validate_dataset
+
+    csvs: list[Path] = []
+    for raw in paths:
+        p = Path(raw)
+        csvs.extend(sorted(p.glob("**/*.csv")) if p.is_dir() else [p])
+
+    problems: list[str] = []
+    for csv_path in csvs:
+        issues = validate_dataset(csv_path)
+        problems.extend(issues)
+        click.echo(f"{'FAIL' if issues else 'OK  '} {csv_path}")
+    for issue in problems:
+        click.echo(f"  {issue}")
+    click.echo(f"validated {len(csvs)} dataset(s): {len(problems)} problem(s)")
+    sys.exit(1 if problems else 0)
 
 
 @main.command()

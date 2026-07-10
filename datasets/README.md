@@ -20,11 +20,27 @@ samples = generate_imu_trajectory(duration_s=20, rate_hz=100, profile="gentle", 
 write_imu_csv(samples, "datasets/imu/imu_run1.csv")
 ```
 
-or from the CLI:
+or from the CLI (which also writes the metadata sidecar):
 
 ```bash
 eaiv datasets generate --profile gentle --duration 20 --rate 100 --seed 42 -o my_log.csv
 ```
+
+## Metadata and validation
+
+Every dataset carries a `<name>.metadata.json` sidecar (schema:
+`eaiv.datasets.DatasetMetadata`) declaring its sensors, units, sampling
+rate, ground-truth columns, version, license, and — for synthetic logs —
+the exact generator parameters that reproduce it. Conventional domains:
+`imu`, `robotics`, `navigation`, `wearables`, `industrial`.
+
+```bash
+eaiv datasets validate datasets/          # exits non-zero on any problem
+```
+
+Validation checks sidecar presence and schema, declared-vs-actual columns,
+strictly monotonic timestamps, and observed-vs-declared sample rate (±5%).
+CI validates every committed dataset.
 
 ## IMU CSV schema
 

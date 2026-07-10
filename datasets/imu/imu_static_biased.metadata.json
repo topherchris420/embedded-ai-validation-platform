@@ -1,0 +1,46 @@
+{
+  "name": "imu_static_biased",
+  "description": "Static pose with constant gyro bias for bias-estimation testing",
+  "domain": "imu",
+  "sampling_rate_hz": 100.0,
+  "sensors": [
+    {
+      "name": "gyroscope",
+      "fields": [
+        "gx",
+        "gy",
+        "gz"
+      ],
+      "units": "rad/s"
+    },
+    {
+      "name": "accelerometer",
+      "fields": [
+        "ax",
+        "ay",
+        "az"
+      ],
+      "units": "g"
+    }
+  ],
+  "ground_truth": [
+    "roll_ref_deg",
+    "pitch_ref_deg"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "generator": {
+    "profile": "static",
+    "seed": 7,
+    "duration_s": 10,
+    "rate_hz": 100,
+    "gyro_noise_std": 0.005,
+    "accel_noise_std": 0.01,
+    "gyro_bias": [
+      0.02,
+      -0.01,
+      0.0
+    ]
+  },
+  "schema_version": 1
+}

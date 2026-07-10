@@ -71,3 +71,86 @@ def test_committed_replay_dataset_exists_and_replays():
     result = FusionExperiment({"source": "datasets/imu/imu_run1.csv", "algorithm": "ekf"}).run()
     assert result.passed
     assert result.metrics["samples"] == 2000
+
+
+def test_metadata_round_trip(tmp_path):
+    from eaiv.datasets import imu_metadata, read_metadata, write_imu_csv, write_metadata
+
+    csv_path = write_imu_csv(generate_imu_trajectory(duration_s=1), tmp_path / "log.csv")
+    meta = imu_metadata("log", "test log", 100.0, generator={"seed": 0})
+    write_metadata(meta, csv_path)
+    loaded = read_metadata(csv_path)
+    assert loaded.name == "log"
+    assert loaded.sensors[0].fields == ["gx", "gy", "gz"]
+    assert loaded.ground_truth == ["roll_ref_deg", "pitch_ref_deg"]
+
+
+def test_validate_passes_for_generated_dataset(tmp_path):
+    from eaiv.datasets import imu_metadata, validate_dataset, write_imu_csv, write_metadata
+
+    csv_path = write_imu_csv(
+        generate_imu_trajectory(duration_s=2, rate_hz=100), tmp_path / "good.csv"
+    )
+    write_metadata(imu_metadata("good", "d", 100.0), csv_path)
+    assert validate_dataset(csv_path) == []
+
+
+def test_validate_catches_missing_sidecar_rate_and_columns(tmp_path):
+    from eaiv.datasets import imu_metadata, validate_dataset, write_imu_csv, write_metadata
+
+    csv_path = write_imu_csv(
+        generate_imu_trajectory(duration_s=1, rate_hz=100), tmp_path / "bad.csv"
+    )
+    assert "missing metadata sidecar" in validate_dataset(csv_path)[0]
+
+    # Wrong declared rate
+    write_metadata(imu_metadata("bad", "d", 500.0), csv_path)
+    assert any("deviates from declared" in p for p in validate_dataset(csv_path))
+
+    # Declared column that doesn't exist
+    meta = imu_metadata("bad", "d", 100.0)
+    meta.ground_truth.append("yaw_ref_deg")
+    write_metadata(meta, csv_path)
+    assert any("yaw_ref_deg" in p for p in validate_dataset(csv_path))
+
+
+def test_validate_catches_non_monotonic_time(tmp_path):
+    from eaiv.datasets import imu_metadata, validate_dataset, write_metadata
+
+    csv_path = tmp_path / "t.csv"
+    csv_path.write_text(
+        "t_s,gx,gy,gz,ax,ay,az,roll_ref_deg,pitch_ref_deg\n"
+        "0.0,0,0,0,0,0,1,0,0\n0.02,0,0,0,0,0,1,0,0\n0.01,0,0,0,0,0,1,0,0\n"
+    )
+    write_metadata(imu_metadata("t", "d", 100.0), csv_path)
+    assert any("monotonic" in p for p in validate_dataset(csv_path))
+
+
+def test_committed_datasets_are_valid():
+    from pathlib import Path
+
+    from eaiv.datasets import validate_dataset
+
+    csvs = sorted(Path("datasets").glob("**/*.csv"))
+    assert len(csvs) >= 3
+    for csv_path in csvs:
+        assert validate_dataset(csv_path) == [], csv_path
+
+
+def test_generate_cli_writes_metadata_sidecar(tmp_path):
+    from click.testing import CliRunner
+
+    from eaiv.cli import main
+    from eaiv.datasets import read_metadata
+
+    out = tmp_path / "log.csv"
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["datasets", "generate", "--duration", "1", "--seed", "5", "-o", str(out)]
+    )
+    assert result.exit_code == 0, result.output
+    meta = read_metadata(out)
+    assert meta.generator["seed"] == 5
+
+    result = runner.invoke(main, ["datasets", "validate", str(out)])
+    assert result.exit_code == 0, result.output

@@ -1,0 +1,41 @@
+{
+  "name": "imu_run1",
+  "description": "Gentle roll/pitch/yaw motion for fusion replay scoring",
+  "domain": "imu",
+  "sampling_rate_hz": 100.0,
+  "sensors": [
+    {
+      "name": "gyroscope",
+      "fields": [
+        "gx",
+        "gy",
+        "gz"
+      ],
+      "units": "rad/s"
+    },
+    {
+      "name": "accelerometer",
+      "fields": [
+        "ax",
+        "ay",
+        "az"
+      ],
+      "units": "g"
+    }
+  ],
+  "ground_truth": [
+    "roll_ref_deg",
+    "pitch_ref_deg"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "generator": {
+    "profile": "gentle",
+    "seed": 42,
+    "duration_s": 20,
+    "rate_hz": 100,
+    "gyro_noise_std": 0.005,
+    "accel_noise_std": 0.01
+  },
+  "schema_version": 1
+}

@@ -20,6 +20,14 @@ from eaiv.datasets.generator import (
     read_imu_csv,
     write_imu_csv,
 )
+from eaiv.datasets.metadata import (
+    DatasetMetadata,
+    SensorInfo,
+    imu_metadata,
+    read_metadata,
+    validate_dataset,
+    write_metadata,
+)
 
 __all__ = [
     "ImuSample",
@@ -27,4 +35,10 @@ __all__ = [
     "generate_imu_trajectory",
     "read_imu_csv",
     "write_imu_csv",
+    "DatasetMetadata",
+    "SensorInfo",
+    "imu_metadata",
+    "read_metadata",
+    "write_metadata",
+    "validate_dataset",
 ]
