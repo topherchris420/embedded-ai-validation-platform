@@ -1,106 +1,42 @@
 # Dashboard Module
 
-Real-time visualization dashboard for embedded AI validation metrics.
-
-## Features
-
-- **Real-time Telemetry** - Live sensor and inference data
-- **Benchmark Comparison** - Compare runs over time
-- **Latency Histograms** - Distribution analysis
-- **Memory Usage** - RAM/Flash tracking
-- **CPU Utilization** - Processing load
-- **Power Profiles** - Energy consumption
-- **Sensor Plots** - IMU, GPS, barometer visualization
-- **Test History** - Historical test results
-- **Interactive Charts** - Zoom, pan, export
-
-## Architecture
-
-```
-dashboard/
-├── python/         # Dashboard backend
-│   ├── app.py      # Streamlit app
-│   ├── api.py      # Data API
-│   └── widgets/    # Custom widgets
-└── static/         # Static assets
-```
-
-## Running the Dashboard
+Streamlit dashboard over the platform's report and telemetry artifacts.
 
 ```bash
-# Install dashboard dependencies
-pip install eaiv[dashboard]
-
-# Start dashboard
-eaiv dashboard start
-
-# Or run directly
+pip install -e ".[dashboard]"
 streamlit run dashboard/python/app.py
 ```
 
-## Dashboard Screens
-
-### Overview
-
-- System status cards
-- Recent test runs
-- Active targets
-- Quick actions
-
-### Real-time Telemetry
-
-- Live sensor plots
-- Inference timing
-- Resource usage
-
-### Benchmark Results
-
-- Run comparison charts
-- Latency distributions
-- Memory usage over time
-
-### Historical Data
-
-- Test history timeline
-- Regression detection
-- Export to CSV/JSON
-
-## Configuration
-
-```yaml
-dashboard:
-  host: 0.0.0.0
-  port: 8501
-  data_dir: reports/
-  refresh_interval_s: 5
-  default_tests:
-    - tinyml
-    - fusion
-    - rt_perf
-```
-
-## API
-
-The dashboard exposes a REST API for programmatic access:
+Generate data first (no hardware needed):
 
 ```bash
-# Get latest results
-curl http://localhost:8501/api/results/latest
-
-# Get benchmark data
-curl http://localhost:8501/api/benchmarks/mobilenet/history
-
-# Get sensor data
-curl http://localhost:8501/api/sensors/imu0/stream
+eaiv run --config configs/sim.yaml                     # writes reports/
+eaiv monitor --config configs/sim.yaml --csv capture.csv   # telemetry CSV
 ```
 
-## Adding Custom Widgets
+## Pages
+
+| Page | Contents |
+|------|----------|
+| Overview | run counters, pass rate, latest run's suite verdict table |
+| Benchmarks | latency distribution (percentiles), power/energy tiles, any metric's history across runs |
+| Telemetry | grouped sensor plots (gyro / accel / orientation) from dataset or captured CSVs |
+| Compare | interactive regression diff between any two recorded reports (same engine as `eaiv compare`) |
+| History | suite outcomes over time, raw runs, one-click export of `report.md` / `report.csv` / `latest.json` |
+
+## Architecture
+
+Data shaping lives in `eaiv.dashboard` (typed, unit-tested, no
+streamlit/pandas dependency); `dashboard/python/app.py` is presentation
+only. Any other front end (Grafana exporter, notebook, TUI) can build on
+the same functions:
 
 ```python
-from dashboard.python.widgets import register_widget
+from eaiv.dashboard import load_reports, metric_history
 
-@register_widget("my_widget")
-def my_widget():
-    st.write("Custom widget content")
-    # Add interactive elements
+reports = load_reports("reports")
+series = metric_history(reports, suite="tinyml", metric="mean_ms")
 ```
+
+Reports come from `eaiv.core.reporter` (`report_*.json`); telemetry CSVs
+come from `eaiv monitor --csv` / `eaiv.telemetry.TelemetryCollector`.

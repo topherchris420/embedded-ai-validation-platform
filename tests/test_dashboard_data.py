@@ -1,0 +1,74 @@
+"""Tests for the dashboard data layer (and that reports feed it correctly)."""
+
+from __future__ import annotations
+
+import json
+
+from eaiv.core.reporter import Reporter
+from eaiv.core.results import AggregateResult, SuiteResult
+from eaiv.dashboard import (
+    latency_percentiles,
+    load_reports,
+    metric_history,
+    numeric_metrics,
+    suite_status,
+)
+
+
+def _publish(tmp_path, mean_ms: float, passed: bool = True) -> None:
+    agg = AggregateResult()
+    agg.add(
+        SuiteResult(
+            name="tinyml",
+            passed=passed,
+            metrics={"mean_ms": mean_ms, "p95_ms": mean_ms * 2, "backend": "mock"},
+            notes="n",
+        )
+    )
+    Reporter(str(tmp_path)).publish(agg)
+
+
+def test_load_reports_reads_reporter_output_newest_first(tmp_path):
+    _publish(tmp_path, 1.0)
+    _publish(tmp_path, 2.0)
+    reports = load_reports(tmp_path)
+    assert len(reports) == 2
+    assert reports[0]["timestamp"] >= reports[1]["timestamp"]
+
+
+def test_load_reports_skips_latest_json_and_garbage(tmp_path):
+    _publish(tmp_path, 1.0)
+    (tmp_path / "report_zz-garbage.json").write_text("{not json")
+    reports = load_reports(tmp_path)
+    assert len(reports) == 1  # latest.json duplicate + garbage both excluded
+
+
+def test_numeric_metrics_excludes_strings(tmp_path):
+    _publish(tmp_path, 1.5)
+    metrics = numeric_metrics(load_reports(tmp_path)[0], "tinyml")
+    assert metrics["mean_ms"] == 1.5
+    assert "backend" not in metrics
+
+
+def test_metric_history_is_oldest_first(tmp_path):
+    _publish(tmp_path, 1.0)
+    _publish(tmp_path, 2.0)
+    series = metric_history(load_reports(tmp_path), "tinyml", "mean_ms")
+    assert [v for _, v in series] == [1.0, 2.0]
+
+
+def test_suite_status_and_percentiles(tmp_path):
+    _publish(tmp_path, 3.0, passed=False)
+    report = load_reports(tmp_path)[0]
+    assert suite_status(report) == [("tinyml", False, "n")]
+    pct = latency_percentiles(numeric_metrics(report, "tinyml"))
+    assert list(pct) == ["mean_ms", "p95_ms"]
+
+
+def test_load_reports_missing_dir_is_empty():
+    assert load_reports("does/not/exist") == []
+
+
+def test_ignores_non_report_json(tmp_path):
+    (tmp_path / "report_x.json").write_text(json.dumps({"unrelated": True}))
+    assert load_reports(tmp_path) == []
