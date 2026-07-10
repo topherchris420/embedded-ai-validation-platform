@@ -38,25 +38,16 @@ class PluginMetadata:
 
 
 class PluginRegistry:
-    """Central registry for all platform plugins.
+    """Registry mapping (plugin_type, name) to metadata and a factory.
 
-    Plugins register themselves using the @register decorator or
-    by calling register_plugin() with their metadata and factory.
+    A module-level default instance backs the ``register_plugin`` decorator
+    and ``get_registry()``; components that want isolation (e.g. tests) can
+    construct and pass around their own instance instead.
     """
 
-    _instance: PluginRegistry | None = None
-
-    def __new__(cls) -> PluginRegistry:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._plugins = {}
-            cls._instance._factories = {}
-        return cls._instance
-
     def __init__(self) -> None:
-        if not hasattr(self, "_plugins"):
-            self._plugins: dict[str, PluginMetadata] = {}
-            self._factories: dict[str, Callable[[dict], object]] = {}
+        self._plugins: dict[str, PluginMetadata] = {}
+        self._factories: dict[str, Callable[[dict], object]] = {}
 
     def register(self, metadata: PluginMetadata, factory: Callable[[dict], object]) -> None:
         """Register a plugin with its metadata and factory function.
@@ -151,14 +142,33 @@ def register_plugin(
             supported_hardware=supported_hardware or [],
             dependencies=dependencies or [],
         )
-        registry = PluginRegistry()
-        registry.register(metadata, factory)
+        _default_registry.register(metadata, factory)
         return factory
 
     return decorator
 
 
-# Global registry accessor
+_default_registry = PluginRegistry()
+
+
 def get_registry() -> PluginRegistry:
-    """Get the global plugin registry instance."""
-    return PluginRegistry()
+    """Get the default (process-wide) plugin registry instance."""
+    return _default_registry
+
+
+def load_entry_point_plugins(group: str = "eaiv.plugins") -> int:
+    """Import third-party plugin modules advertised via entry points.
+
+    External packages contribute plugins by exposing a module in the
+    ``eaiv.plugins`` entry-point group; importing the module runs its
+    ``register_plugin`` decorators against the default registry.
+
+    Returns the number of entry points loaded.
+    """
+    from importlib.metadata import entry_points
+
+    count = 0
+    for ep in entry_points(group=group):
+        ep.load()
+        count += 1
+    return count

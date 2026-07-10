@@ -39,5 +39,6 @@ src/eaiv/tinyml/metrics.py
 src/eaiv/tinyml/model_loader.py
 tests/test_firmware.py
 tests/test_fusion.py
+tests/test_plugins.py
 tests/test_rt_perf.py
 tests/test_tinyml.py

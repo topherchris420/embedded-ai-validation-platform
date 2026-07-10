@@ -33,6 +33,7 @@ from eaiv.plugins import (  # noqa: E402
     PluginMetadata,
     register_plugin,
     get_registry,
+    load_entry_point_plugins,
 )
 from eaiv.plugins.targets import Target, TargetInfo  # noqa: E402
 from eaiv.plugins.sensors import (  # noqa: E402
@@ -64,6 +65,7 @@ __all__ = [
     "PluginMetadata",
     "register_plugin",
     "get_registry",
+    "load_entry_point_plugins",
     # Targets
     "Target",
     "TargetInfo",

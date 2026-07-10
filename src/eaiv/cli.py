@@ -44,9 +44,14 @@ def show(config_path: str) -> None:
 
 @main.command()
 def targets() -> None:
-    """List supported target backends."""
-    for name in ("qemu", "serial", "jlink"):
-        click.echo(name)
+    """List registered target backends."""
+    import eaiv.targets  # noqa: F401  (importing registers the built-in targets)
+
+    from eaiv.plugins import get_registry, load_entry_point_plugins
+
+    load_entry_point_plugins()
+    for meta in get_registry().list_plugins("target"):
+        click.echo(f"{meta.name:<12} {meta.version:<8} {meta.description}")
 
 
 if __name__ == "__main__":
