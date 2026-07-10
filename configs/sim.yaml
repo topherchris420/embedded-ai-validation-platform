@@ -15,3 +15,4 @@ firmware:
 
 tinyml:
   runtime: mock
+  power: {kind: sim, active_mw: 180.0, seed: 0}

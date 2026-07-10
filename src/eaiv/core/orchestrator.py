@@ -5,6 +5,7 @@ from __future__ import annotations
 from eaiv.config import Config
 from eaiv.core.reporter import Reporter
 from eaiv.core.results import AggregateResult, SuiteResult
+from eaiv.benchmarks.memory import MemoryBenchmark
 from eaiv.firmware.tester import FirmwareTester
 from eaiv.hil.suite import HILExperiment
 from eaiv.rt_perf.profiler import RTProfiler
@@ -40,6 +41,8 @@ class Orchestrator:
             results.add(FusionExperiment(self.cfg["sensor_fusion"]).run())
         if suite in ("hil", "all"):
             results.add(HILExperiment(self.cfg.get("hil", {})).run())
+        if suite in ("memory", "all"):
+            results.add(MemoryBenchmark(self.cfg.get("memory", {})).run())
         if suite in ("rt", "all"):
             assert target is not None
             results.add(RTProfiler(self.cfg["rt_perf"], target).run())

@@ -7,8 +7,13 @@ from typing import Any
 
 import numpy as np
 
+from typing import TYPE_CHECKING
+
 from eaiv.core.results import SuiteResult
 from eaiv.targets.base import Target
+
+if TYPE_CHECKING:
+    from eaiv.power import PowerMonitor
 from eaiv.tinyml.metrics import LatencyStats, estimate_macs
 from eaiv.tinyml.model_loader import ModelMeta, load_model
 
@@ -23,14 +28,22 @@ class TinyMLBenchmark:
         iterations = int(self.spec.get("iterations", 50))
         warmup = int(self.spec.get("warmup", 5))
 
+        # Startup: cold model load through first inference (time-to-first-
+        # inference), measured before the timed loop touches the runtime.
+        t_start = time.perf_counter()
         try:
             meta, runtime = load_model(model_path)
+            x = self._load_input(meta.input_shape)
+            self._invoke(runtime, meta, x)
         except Exception as e:  # noqa: BLE001
             return SuiteResult(
                 name="tinyml", passed=False, metrics={}, notes=f"model load failed: {e}"
             )
+        startup_ms = (time.perf_counter() - t_start) * 1000.0
 
-        x = self._load_input(meta.input_shape)
+        monitor = self._build_monitor()
+        if monitor is not None:
+            monitor.start()
 
         stats = LatencyStats()
         for i in range(warmup + iterations):
@@ -47,8 +60,20 @@ class TinyMLBenchmark:
                 "backend": meta.backend,
                 "model_size_bytes": meta.size_bytes,
                 "estimated_macs": macs,
+                "startup_ms": round(startup_ms, 3),
             }
         )
+
+        if monitor is not None:
+            trace = monitor.stop()
+            total_inferences = warmup + iterations
+            summary.update(
+                {
+                    "mean_power_mw": round(trace.mean_mw, 3),
+                    "peak_power_mw": round(trace.peak_mw, 3),
+                    "energy_per_inference_mj": round(trace.energy_mj / total_inferences, 6),
+                }
+            )
 
         # A benchmark "passes" as long as it produced timing data at all;
         # regressions against a baseline belong in a separate comparison
@@ -60,6 +85,15 @@ class TinyMLBenchmark:
             metrics=summary,
             notes=f"{meta.backend} model, {iterations} timed iterations",
         )
+
+    def _build_monitor(self) -> "PowerMonitor | None":
+        """Power monitoring is opt-in: ``tinyml.power: {kind: sim, ...}``."""
+        power_spec = self.spec.get("power")
+        if not power_spec:
+            return None
+        from eaiv.power import build_power_monitor
+
+        return build_power_monitor(power_spec)
 
     @staticmethod
     def _load_input(shape: tuple) -> np.ndarray:

@@ -23,6 +23,12 @@ tinyml:
   inputs: datasets/cifar10_sample.npy
   iterations: 50
   warmup: 5
+  power: {}               # e.g. {kind: sim, active_mw: 180} to add energy metrics
+
+memory:
+  binary: build/firmware.elf   # ELF for static ROM/RAM footprint analysis
+  model: models/mobilenet_v1_0.25_128_int8.tflite
+  require: false               # missing binary => suite is skipped, not failed
 
 sensor_fusion:
   source: datasets/imu/imu_run1.csv

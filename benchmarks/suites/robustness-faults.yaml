@@ -1,0 +1,12 @@
+# Fusion robustness under aggressive fault injection (HIL suite).
+inherit: ../../configs/default.yaml
+
+hil:
+  source: datasets/imu/imu_aggressive.csv
+  algorithm: ekf
+  faults:
+    - {kind: noise, std: 0.1, fields: [gx, gy, gz], seed: 3}
+    - {kind: packet_loss, probability: 0.05, seed: 1}
+    - {kind: jitter, std_s: 0.003, seed: 2}
+    - {kind: outage, start_s: 5.0, duration_s: 0.5}
+  max_faulted_rmse_deg: 20.0
