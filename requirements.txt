@@ -1,0 +1,6 @@
+pyserial>=3.5
+pyyaml>=6.0
+numpy>=1.24
+pyelftools>=0.29
+rich>=13.5
+click>=8.1

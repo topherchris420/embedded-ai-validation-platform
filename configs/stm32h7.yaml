@@ -1,0 +1,21 @@
+inherit: default.yaml
+target:
+  kind: jlink
+  binary: build/stm32h7.elf
+  jlink:
+    device: STM32H743VI
+    interface: swd
+tinyml:
+  model: models/person_detect_int8.tflite
+  runtime: tflite
+  inputs: datasets/visual_wake_words_sample.npy
+rt_perf:
+  task_set:
+    - name: control_loop
+      period_ms: 1
+      deadline_ms: 1
+      wcet_budget_ms: 0.8
+    - name: inference
+      period_ms: 100
+      deadline_ms: 100
+      wcet_budget_ms: 60

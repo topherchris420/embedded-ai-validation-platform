@@ -1,0 +1,47 @@
+target:
+  kind: qemu            # qemu | serial | jlink
+  binary: build/firmware.elf
+  qemu:
+    machine: mps2-an385
+    cpu: cortex-m3
+  serial:
+    port: /dev/ttyACM0
+    baud: 115200
+  jlink:
+    device: STM32H743VI
+    interface: swd
+
+firmware:
+  timeout_s: 30
+  retries: 2
+  pass_patterns: ["PASS", "ALL_TESTS_OK"]
+  fail_patterns: ["FAIL", "ASSERT"]
+
+tinyml:
+  model: models/mobilenet_v1_0.25_128_int8.tflite
+  runtime: tflite         # tflite | onnx | mock
+  inputs: datasets/cifar10_sample.npy
+  iterations: 50
+  warmup: 5
+
+sensor_fusion:
+  source: datasets/imu_run1.csv
+  algorithm: kalman      # kalman | complementary | mahony
+  sample_rate_hz: 200
+  metrics: [rmse, drift_deg_per_min, lag_ms]
+
+rt_perf:
+  task_set:
+    - name: control_loop
+      period_ms: 5
+      deadline_ms: 5
+      wcet_budget_ms: 4
+    - name: inference
+      period_ms: 100
+      deadline_ms: 100
+      wcet_budget_ms: 80
+  duration_s: 60
+
+reporting:
+  format: [console, json, html]
+  out_dir: reports/

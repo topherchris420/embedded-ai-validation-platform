@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eaiv"
+version = "0.1.0"
+description = "Embedded AI Validation Platform: firmware tests, TinyML benchmarks, sensor-fusion experiments, RT validation."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "topherchris420" }]
+requires-python = ">=3.9"
+dependencies = [
+  "pyserial>=3.5",
+  "pyyaml>=6.0",
+  "numpy>=1.24",
+  "pyelftools>=0.29",
+  "rich>=13.5",
+  "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "pytest-cov", "ruff", "mypy"]
+jlink = ["pylink-square>=0.13"]
+tinyml = ["onnxruntime>=1.16", "tflite-runtime>=2.14; platform_machine != 'armv7l'"]
+qemu = []  # requires system qemu-system-arm binary
+
+[project.scripts]
+eaiv = "eaiv.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
