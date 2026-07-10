@@ -14,6 +14,8 @@ src/eaiv/core/__init__.py
 src/eaiv/core/orchestrator.py
 src/eaiv/core/reporter.py
 src/eaiv/core/results.py
+src/eaiv/datasets/__init__.py
+src/eaiv/datasets/generator.py
 src/eaiv/firmware/__init__.py
 src/eaiv/firmware/flasher.py
 src/eaiv/firmware/serial_io.py

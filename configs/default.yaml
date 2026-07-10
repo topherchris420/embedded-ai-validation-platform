@@ -25,8 +25,9 @@ tinyml:
   warmup: 5
 
 sensor_fusion:
-  source: datasets/imu_run1.csv
-  algorithm: kalman      # kalman | complementary | mahony
+  source: datasets/imu/imu_run1.csv
+  algorithm: ekf         # complementary | mahony | madgwick | kalman | ekf
+  params: {}             # forwarded to the filter constructor, e.g. {beta: 0.2}
   sample_rate_hz: 200
   metrics: [rmse, drift_deg_per_min, lag_ms]
 
