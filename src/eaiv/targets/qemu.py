@@ -64,3 +64,13 @@ class QEMUTarget(Target):
 
     def info(self) -> TargetInfo:
         return TargetInfo(name=f"qemu:{self.machine}", arch=self.cpu, clock_hz=25_000_000)
+
+    def close(self) -> None:
+        """Clean up QEMU process."""
+        if self._proc:
+            self._proc.terminate()
+            try:
+                self._proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._proc.kill()
+            self._proc = None

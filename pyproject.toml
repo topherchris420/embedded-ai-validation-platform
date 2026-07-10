@@ -4,26 +4,62 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eaiv"
-version = "0.1.0"
+version = "0.2.0"
 description = "Embedded AI Validation Platform: firmware tests, TinyML benchmarks, sensor-fusion experiments, RT validation."
 readme = "README.md"
 license = { text = "MIT" }
-authors = [{ name = "topherchris420" }]
-requires-python = ">=3.9"
+authors = [
+    { name = "topherchris420", email = "topherchris420@example.com" },
+]
+requires-python = ">=3.12"
 dependencies = [
-  "pyserial>=3.5",
-  "pyyaml>=6.0",
-  "numpy>=1.24",
-  "pyelftools>=0.29",
-  "rich>=13.5",
-  "click>=8.1",
+    "pyserial>=3.5",
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+    "pyelftools>=0.29",
+    "rich>=13.5",
+    "click>=8.1",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "pytest-cov", "ruff", "mypy"]
+# Development dependencies
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "pytest-asyncio",
+    "ruff>=0.4.0",
+    "mypy>=1.8",
+    "black>=24.0",
+    "pre-commit",
+]
+# Hardware debugging
 jlink = ["pylink-square>=0.13"]
-tinyml = ["onnxruntime>=1.16", "tflite-runtime>=2.14; platform_machine != 'armv7l'"]
-qemu = []  # requires system qemu-system-arm binary
+# TinyML runtimes
+tinyml = [
+    "onnxruntime>=1.16",
+    "tflite-runtime>=2.14; platform_machine != 'armv7l'",
+]
+# QEMU (requires system binary)
+qemu = []
+# Dashboard
+dashboard = [
+    "streamlit>=1.30",
+    "plotly>=5.18",
+    "pandas>=2.0",
+]
+# Hardware-in-the-loop testing
+hil = [
+    "aioresponses>=0.7",
+]
+# Full development environment
+all = [
+    "eaiv[dev]",
+    "eaiv[jlink]",
+    "eaiv[tinyml]",
+    "eaiv[dashboard]",
+    "eaiv[hil]",
+]
 
 [project.scripts]
 eaiv = "eaiv.cli:main"
@@ -33,7 +69,32 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py312"
+lint.extend-ignore = ["E501", "ANN401"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.pre-commit]
+repos = [
+    { repo = "https://github.com/astral-sh/ruff-pre-commit", rev = "v0.4.0" },
+    { repo = "https://github.com/psf/black", rev = "24.0.0" },
+]
+hooks = [
+    "ruff",
+    "ruff-format",
+    "black",
+]

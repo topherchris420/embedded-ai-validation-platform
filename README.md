@@ -1,55 +1,227 @@
-# eaiv — Embedded AI Validation Platform
+# Embedded AI Validation Platform
 
-`eaiv` is an open-source test harness for validating AI workloads on
-resource-constrained embedded hardware. It bundles four cooperating
-subsystems:
+An industry-grade platform for validating, benchmarking, profiling, and testing embedded AI systems running on resource-constrained hardware.
 
-| Subsystem | What it does |
-|-----------|--------------|
-| `firmware` | Flash, boot, and exercise firmware test binaries over serial/J-Link/QEMU. |
-| `tinyml`   | Benchmark `.tflite` / ONNX models on-device; capture latency, RAM, ROM, MACs. |
-| `sensor_fusion` | Run Kalman / complementary / Mahony filters on recorded or live IMU streams. |
-| `rt_perf`  | Measure worst-case execution time, jitter, deadline misses, and ISR latency. |
+![Platform](https://img.shields.io/badge/python-3.12%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+[![CI](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml)
 
-## Why
+## 🎯 Purpose
 
-Embedded AI projects usually validate each subsystem by hand: flash the
-board, watch the serial monitor, eyeball the numbers, repeat. `eaiv` turns
-that loop into a single reproducible command that CI can run on every push —
-against real hardware over J-Link/serial, or against QEMU when no board is
-attached.
+This platform is designed to be the equivalent of **pytest + PlatformIO + MLPerf Tiny + hardware telemetry** specifically for embedded devices. It's useful for engineers working in:
 
-## Quick start
+- 🤖 Robotics
+- 🏭 Industrial automation
+- 🏥 Medical devices
+- 📡 IoT
+- 🚗 Autonomous systems
+- ⚡ Edge AI
+- 📟 Embedded firmware
+- 🔬 Research
+
+## ✨ Features
+
+- **Firmware Testing** - Flash, boot, and exercise firmware test binaries over serial/J-Link/QEMU
+- **TinyML Benchmarking** - Benchmark `.tflite` / ONNX models on-device; capture latency, RAM, ROM, MACs
+- **Sensor Fusion** - Run Kalman / complementary / Mahony filters on recorded or live IMU streams
+- **Real-time Profiling** - Measure worst-case execution time, jitter, deadline misses, and ISR latency
+- **Hardware-in-the-Loop** - Python simulator with virtual sensors, fault injection, and dataset replay
+- **Dashboard** - Real-time visualization of metrics and benchmark results
+- **Plugin Architecture** - Easy extension for new boards, sensors, benchmarks
+
+## 🏗️ Architecture
+
+```
+embedded-ai-validation-platform/
+├── firmware/           # Reusable firmware examples (PlatformIO)
+│   ├── boards/         # Board configurations (ESP32, STM32, RPi Pico)
+│   └── sensors/        # Sensor drivers
+├── benchmarks/         # Benchmark suite for TinyML
+│   └── tinyml/         # TinyML benchmarking
+├── sensor_fusion/      # Sensor fusion framework
+│   ├── algorithms/     # Filter implementations
+│   └── experiments/    # Experiment runners
+├── hil/                # Hardware-in-the-loop testing
+│   ├── simulator/      # Virtual sensors
+│   └── faults/         # Fault injection
+├── dashboard/          # Streamlit dashboard
+│   └── python/         # Dashboard app
+├── ci/                 # GitHub Actions workflows
+├── datasets/           # Reusable datasets
+└── src/eaiv/           # Python package
+    ├── plugins/        # Plugin system
+    ├── firmware/       # Firmware testing
+    ├── tinyml/         # TinyML benchmarks
+    ├── sensor_fusion/  # Sensor fusion
+    ├── rt_perf/        # Real-time profiling
+    └── targets/       # Hardware targets
+```
+
+## 🚀 Quick Start
 
 ```bash
+# Clone and install
 git clone https://github.com/topherchris420/embedded-ai-validation-platform.git
 cd embedded-ai-validation-platform
+pip install -e ".[all]"
+
+# Run validation suite
+eaiv run --config configs/default.yaml --suite all
+
+# Start dashboard
+eaiv dashboard start
+
+# Show configuration
+eaiv show --config configs/default.yaml
+```
+
+## 📦 Installation
+
+### Core Dependencies
+
+```bash
 pip install -e .
-eaiv run --config configs/stm32h7.yaml --suite all
 ```
 
-Run a single suite:
+### Full Development Environment
 
 ```bash
-eaiv run --config configs/default.yaml --suite tinyml
+pip install -e ".[all]"
 ```
 
-Inspect resolved config (after YAML `inherit` merging):
+### Individual Extras
 
 ```bash
-eaiv show --config configs/stm32h7.yaml
+pip install -e ".[dev]"       # Development tools
+pip install -e ".[jlink]"      # J-Link debugging
+pip install -e ".[tinyml]"     # TinyML runtimes
+pip install -e ".[dashboard]" # Dashboard
+pip install -e ".[hil]"        # HIL testing
 ```
 
-## Architecture
+## 💻 CLI Usage
 
-See [docs/architecture.md](docs/architecture.md) for the subsystem breakdown
-and [docs/usage.md](docs/usage.md) for configuration reference and examples.
+### Running Tests
 
-## Status
+```bash
+# Run all suites
+eaiv run --config configs/default.yaml --suite all
 
-Early-stage / smoke-tested. APIs may shift. Contributions and hardware
-target reports (boards tested, quirks found) are welcome via issues/PRs.
+# Run specific suite
+eaiv run --config configs/stm32h7.yaml --suite tinyml
+eaiv run --config configs/esp32.yaml --suite firmware
+eaiv run --config configs/default.yaml --suite fusion
+```
 
-## License
+### Viewing Configuration
 
-MIT — see [LICENSE](LICENSE).
+```bash
+# Show resolved config
+eaiv show --config configs/default.yaml
+
+# List available targets
+eaiv targets
+```
+
+## 🔧 Supported Hardware
+
+| Board | Architecture | Status |
+|-------|--------------|--------|
+| ESP32 | Xtensa Dual-Core | ✅ |
+| ESP32-S3 | RISC-V + AI Accelerator | ✅ |
+| STM32H7 | ARM Cortex-M7 | ✅ |
+| RPi Pico | RP2040 | ✅ |
+| RPi Zero 2 W | ARM Cortex-A53 | 🔜 |
+
+## 📊 Benchmark Metrics
+
+| Metric | Description |
+|--------|-------------|
+| Inference Latency | Time per inference (ms) |
+| FPS | Frames per second |
+| RAM Usage | Memory consumption (KB) |
+| Flash Size | Model storage (KB) |
+| CPU Utilization | Processor usage (%) |
+| Power Consumption | Energy draw (mW) |
+| Startup Time | Time to first inference (ms) |
+
+## 🔌 Plugin System
+
+Extend the platform with plugins:
+
+```python
+from eaiv.plugins import register_plugin
+from eaiv.plugins.targets import Target
+
+@register_plugin("my_board", "target", "My custom board support")
+class MyBoardTarget(Target):
+    def flash(self, binary: str) -> None:
+        ...
+
+    def reset(self) -> None:
+        ...
+
+    def run_command(self, cmd: str, timeout_s: float = 5.0) -> str:
+        ...
+
+    def read_serial(self, duration_s: float) -> str:
+        ...
+
+    def info(self) -> TargetInfo:
+        ...
+```
+
+## 📁 Datasets
+
+The platform includes reusable datasets in CSV format:
+
+```csv
+timestamp_s,gx,gy,gz,ax,ay,az
+0.0,0.001,0.002,-0.0005,0.01,0.02,0.98
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ -v --cov=src/eaiv --cov-report=html
+
+# Run specific test
+pytest tests/test_tinyml.py -v
+```
+
+## 📈 CI/CD
+
+GitHub Actions workflows are included for:
+
+- Code linting (ruff, black, mypy)
+- Unit tests with coverage
+- Firmware builds (ESP32, STM32, RPi Pico)
+- Documentation generation
+- Integration tests
+
+## 📚 Documentation
+
+- [Architecture](docs/architecture.md)
+- [Usage Guide](docs/usage.md)
+- [Configuration Reference](docs/config-reference.md)
+- [Supported Hardware](docs/hardware.md)
+- [Contributing](CONTRIBUTING.md)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) before submitting PRs.
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE) for details.
+
+## 🔗 Related Projects
+
+- [TensorFlow Lite Micro](https://www.tensorflow.org/lite/microcontrollers)
+- [ONNX Runtime](https://onnxruntime.ai/)
+- [PlatformIO](https://platformio.org/)
+- [MLPerf Tiny](https://mlcommons.org/en/influence-tiny-benchmarks)

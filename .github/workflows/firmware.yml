@@ -1,0 +1,107 @@
+name: Firmware Build
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "firmware/**"
+      - "src/eaiv/firmware/**"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - "src/eaiv/firmware/**"
+
+jobs:
+  build-esp32:
+    name: Build ESP32
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PlatformIO
+        uses: platformio/action pio-platform-reset@v1
+
+      - name: Build ESP32 firmware
+        run: pio run -e esp32
+        working-directory: firmware
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-firmware
+          path: firmware/.pio/build/esp32/firmware.bin
+
+  build-esp32-s3:
+    name: Build ESP32-S3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PlatformIO
+        uses: platformio/action pio-platform-reset@v1
+
+      - name: Build ESP32-S3 firmware
+        run: pio run -e esp32-s3
+        working-directory: firmware
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-s3-firmware
+          path: firmware/.pio/build/esp32-s3/firmware.bin
+
+  build-stm32:
+    name: Build STM32
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PlatformIO
+        uses: platformio/action pio-platform-reset@v1
+
+      - name: Build STM32 firmware
+        run: pio run -e stm32h7
+        working-directory: firmware
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stm32-firmware
+          path: firmware/.pio/build/stm32h7/firmware.bin
+
+  build-pico:
+    name: Build Raspberry Pi Pico
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PlatformIO
+        uses: platformio/action pio-platform-reset@v1
+
+      - name: Build Pico firmware
+        run: pio run -e pico
+        working-directory: firmware
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pico-firmware
+          path: firmware/.pio/build/pico/firmware.bin
+
+  notify:
+    name: Notify
+    needs: [build-esp32, build-esp32-s3, build-stm32, build-pico]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Firmware Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "- ESP32: ${{ needs.build-esp32.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ESP32-S3: ${{ needs.build-esp32-s3.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- STM32: ${{ needs.build-stm32.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Pico: ${{ needs.build-pico.result }}" >> $GITHUB_STEP_SUMMARY
