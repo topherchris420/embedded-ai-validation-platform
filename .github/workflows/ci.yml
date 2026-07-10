@@ -84,9 +84,52 @@ jobs:
           python -c "from eaiv import Orchestrator, load_config"
           python -c "from eaiv.targets import build_target"
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Validate documentation links
+        run: python ci/check_docs.py
+
+  benchmark-report:
+    name: Benchmark Report (simulated)
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Run all suites against the simulated target
+        run: eaiv run --config configs/sim.yaml --suite all --report-dir reports
+
+      - name: Publish report to job summary
+        run: cat reports/report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: reports/
+
   notify:
     name: Notify
-    needs: [lint, test, test-integration]
+    needs: [lint, test, test-integration, docs, benchmark-report]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -96,3 +139,5 @@ jobs:
           echo "- Lint: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Test: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Integration: ${{ needs.test-integration.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docs: ${{ needs.docs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Benchmark report: ${{ needs.benchmark-report.result }}" >> $GITHUB_STEP_SUMMARY
