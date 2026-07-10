@@ -2,7 +2,8 @@
 
 An industry-grade platform for validating, benchmarking, profiling, and testing embedded AI systems running on resource-constrained hardware.
 
-![Platform](https://img.shields.io/badge/python-3.12%2B-blue)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![Typed](https://img.shields.io/badge/mypy-strict-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![CI](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml)
 
@@ -23,38 +24,38 @@ This platform is designed to be the equivalent of **pytest + PlatformIO + MLPerf
 
 - **Firmware Testing** - Flash, boot, and exercise firmware test binaries over serial/J-Link/QEMU
 - **TinyML Benchmarking** - Benchmark `.tflite` / ONNX models on-device; capture latency, RAM, ROM, MACs
-- **Sensor Fusion** - Run Kalman / complementary / Mahony filters on recorded or live IMU streams
+- **Sensor Fusion** - Complementary / Mahony / Madgwick / Kalman / EKF filters on recorded or live IMU streams
 - **Real-time Profiling** - Measure worst-case execution time, jitter, deadline misses, and ISR latency
-- **Hardware-in-the-Loop** - Python simulator with virtual sensors, fault injection, and dataset replay
+- **Hardware-in-the-Loop** - Simulated target, fault injection (noise, packet loss, jitter, outages), dataset replay
 - **Dashboard** - Real-time visualization of metrics and benchmark results
-- **Plugin Architecture** - Easy extension for new boards, sensors, benchmarks
+- **Plugin Architecture** - Easy extension for new boards, sensors, benchmarks, filters, faults
+- **Regression Gating** - `eaiv compare` diffs report artifacts and fails CI on metric regressions
+- **Telemetry Pipeline** - typed serial protocol, per-board adapter plugins, live capture to CSV/statistics
+- **Power & Memory** - energy-per-inference via `power_monitor` plugins; static ROM/RAM budget gates
 
 ## 🏗️ Architecture
 
 ```
 embedded-ai-validation-platform/
-├── firmware/           # Reusable firmware examples (PlatformIO)
-│   ├── boards/         # Board configurations (ESP32, STM32, RPi Pico)
-│   └── sensors/        # Sensor drivers
-├── benchmarks/         # Benchmark suite for TinyML
-│   └── tinyml/         # TinyML benchmarking
-├── sensor_fusion/      # Sensor fusion framework
-│   ├── algorithms/     # Filter implementations
-│   └── experiments/    # Experiment runners
-├── hil/                # Hardware-in-the-loop testing
-│   ├── simulator/      # Virtual sensors
-│   └── faults/         # Fault injection
+├── firmware/           # PlatformIO validation firmware (C++ HAL + app)
+│   ├── include/eaiv/   # Board/IMU/filter abstraction headers
+│   └── src/main.cpp    # Serial test-protocol application
+├── datasets/           # Committed, reproducible replay datasets
+│   └── imu/            # Seeded IMU logs with ground-truth orientation
+├── configs/            # YAML run profiles (default, sim, stm32h7, ...)
 ├── dashboard/          # Streamlit dashboard
-│   └── python/         # Dashboard app
-├── ci/                 # GitHub Actions workflows
-├── datasets/           # Reusable datasets
+├── docs/               # Architecture, usage, config & hardware reference
+├── examples/           # Standalone example scripts
 └── src/eaiv/           # Python package
-    ├── plugins/        # Plugin system
-    ├── firmware/       # Firmware testing
+    ├── plugins/        # Plugin registry + base classes
+    ├── core/           # Orchestrator, reporter, regression gate
+    ├── targets/        # Hardware targets (qemu, serial, jlink, sim)
+    ├── firmware/       # Firmware flashing/testing
     ├── tinyml/         # TinyML benchmarks
-    ├── sensor_fusion/  # Sensor fusion
-    ├── rt_perf/        # Real-time profiling
-    └── targets/       # Hardware targets
+    ├── sensor_fusion/  # Fusion filters + replay experiments
+    ├── datasets/       # Synthetic dataset generator
+    ├── hil/            # Fault injection, simulator, HIL suite
+    └── rt_perf/        # Real-time profiling
 ```
 
 ## 🚀 Quick Start
@@ -65,14 +66,19 @@ git clone https://github.com/topherchris420/embedded-ai-validation-platform.git
 cd embedded-ai-validation-platform
 pip install -e ".[all]"
 
-# Run validation suite
-eaiv run --config configs/default.yaml --suite all
+# Run the full validation suite hardware-free (simulated target)
+eaiv run --config configs/sim.yaml --suite all
 
-# Start dashboard
-eaiv dashboard start
+# Run individual suites
+eaiv run --config configs/default.yaml --suite fusion
+eaiv run --config configs/default.yaml --suite hil
 
-# Show configuration
-eaiv show --config configs/default.yaml
+# Explore
+eaiv plugins                          # everything registered
+eaiv show --config configs/sim.yaml   # resolved configuration
+
+# Start the dashboard
+streamlit run dashboard/python/app.py
 ```
 
 ## 📦 Installation
@@ -101,37 +107,52 @@ pip install -e ".[hil]"        # HIL testing
 
 ## 💻 CLI Usage
 
-### Running Tests
+### Running suites
 
 ```bash
-# Run all suites
 eaiv run --config configs/default.yaml --suite all
-
-# Run specific suite
 eaiv run --config configs/stm32h7.yaml --suite tinyml
-eaiv run --config configs/esp32.yaml --suite firmware
-eaiv run --config configs/default.yaml --suite fusion
+eaiv run --config configs/sim.yaml --suite firmware      # no hardware
+eaiv run --config configs/default.yaml --suite hil       # fault injection
 ```
 
-### Viewing Configuration
+### Hardware tools
 
 ```bash
-# Show resolved config
-eaiv show --config configs/default.yaml
+eaiv flash build/firmware.elf --config configs/stm32h7.yaml
+eaiv monitor --config configs/esp32.yaml --duration 10
+```
 
-# List available targets
-eaiv targets
+### Datasets and regression gating
+
+```bash
+# Deterministic synthetic IMU log (same seed => identical file)
+eaiv datasets generate --profile gentle --duration 20 --seed 42 -o log.csv
+
+# Fail CI when any metric worsens by more than 10%
+eaiv compare baseline.json reports/latest.json --max-regression-pct 10
+```
+
+### Introspection
+
+```bash
+eaiv show --config configs/default.yaml   # resolved config (after inherit)
+eaiv plugins                              # all registered plugins
+eaiv targets                              # target backends only
 ```
 
 ## 🔧 Supported Hardware
 
 | Board | Architecture | Status |
 |-------|--------------|--------|
-| ESP32 | Xtensa Dual-Core | ✅ |
-| ESP32-S3 | RISC-V + AI Accelerator | ✅ |
-| STM32H7 | ARM Cortex-M7 | ✅ |
-| RPi Pico | RP2040 | ✅ |
+| ESP32 | Xtensa LX6 dual-core | ✅ |
+| ESP32-S3 | Xtensa LX7 dual-core | ✅ |
+| STM32H743 | ARM Cortex-M7 | ✅ |
+| RPi Pico | RP2040 (Cortex-M0+) | ✅ |
 | RPi Zero 2 W | ARM Cortex-A53 | 🔜 |
+
+Firmware for every ✅ board is built in CI; see [docs/hardware-support.md](docs/hardware-support.md)
+for target-backend details and how to add a board.
 
 ## 📊 Benchmark Metrics
 
@@ -144,40 +165,41 @@ eaiv targets
 | CPU Utilization | Processor usage (%) |
 | Power Consumption | Energy draw (mW) |
 | Startup Time | Time to first inference (ms) |
+| Energy per Inference | mJ, via `power_monitor` plugins |
+| ROM / static RAM | ELF footprint analysis (KB) |
 
 ## 🔌 Plugin System
 
-Extend the platform with plugins:
+Targets, fusion filters, and fault models are all plugins — extend the
+platform without touching core code:
 
 ```python
 from eaiv.plugins import register_plugin
-from eaiv.plugins.targets import Target
+from eaiv.plugins.targets import Target, TargetInfo
 
 @register_plugin("my_board", "target", "My custom board support")
 class MyBoardTarget(Target):
-    def flash(self, binary: str) -> None:
-        ...
-
-    def reset(self) -> None:
-        ...
-
-    def run_command(self, cmd: str, timeout_s: float = 5.0) -> str:
-        ...
-
-    def read_serial(self, duration_s: float) -> str:
-        ...
-
-    def info(self) -> TargetInfo:
-        ...
+    def flash(self, binary: str) -> None: ...
+    def reset(self) -> None: ...
+    def run_command(self, cmd: str, timeout_s: float = 5.0) -> str: ...
+    def read_serial(self, duration_s: float) -> str: ...
+    def info(self) -> TargetInfo: ...
 ```
+
+External packages can ship plugins via the `eaiv.plugins` entry-point
+group. `eaiv plugins` lists everything registered — including the built-in
+fusion filters (`complementary`, `mahony`, `madgwick`, `kalman`, `ekf`)
+and HIL fault models (`noise`, `packet_loss`, `jitter`, `outage`).
 
 ## 📁 Datasets
 
-The platform includes reusable datasets in CSV format:
+Committed, replay-capable IMU logs live in [`datasets/imu/`](datasets/) —
+generated with a seeded synthetic trajectory generator, so they carry exact
+ground-truth orientation columns and are reproducible bit-for-bit:
 
 ```csv
-timestamp_s,gx,gy,gz,ax,ay,az
-0.0,0.001,0.002,-0.0005,0.01,0.02,0.98
+t_s,gx,gy,gz,ax,ay,az,roll_ref_deg,pitch_ref_deg
+0.000000,0.190483,0.014057,0.008969,0.006064,0.001517,1.002614,0.0000,0.0000
 ```
 
 ## 🧪 Testing
@@ -205,10 +227,21 @@ GitHub Actions workflows are included for:
 
 ## 📚 Documentation
 
+- [Getting Started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
+- [Benchmarking Guide](docs/benchmarking.md)
 - [Usage Guide](docs/usage.md)
 - [Configuration Reference](docs/config-reference.md)
-- [Supported Hardware](docs/hardware.md)
+- [Supported Hardware](docs/hardware-support.md)
+- [Developer Guide](docs/developer-guide.md)
+- [Plugin Development](docs/plugin-development.md)
+- [HIL Testing](hil/README.md)
+- [Firmware](firmware/README.md)
+- [Benchmarks](benchmarks/README.md)
+- [Dashboard](dashboard/README.md)
+- [Examples](examples/README.md)
+- [Migration Plan / ADR](docs/migration-plan.md)
+- [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## 🤝 Contributing

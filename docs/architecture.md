@@ -13,12 +13,15 @@
                          │  aggregates results    │
                          └──────────┬───────────┘
                                     │
-        ┌──────────────┬───────────┼───────────────┬───────────────┐
-        ▼              ▼           ▼               ▼               ▼
- eaiv.targets   eaiv.firmware  eaiv.tinyml   eaiv.sensor_fusion  eaiv.rt_perf
- (qemu/serial/   (flash, boot,  (benchmark    (Kalman/comp/       (WCET, jitter,
-  jlink)         pattern match) latency/mem)  Mahony filters)     deadline miss)
-                                    │
+   ┌───────────┬───────────┬─────┼─────────┬───────────────┬─────────────┐
+   ▼           ▼           ▼     ▼         ▼               ▼             ▼
+eaiv.targets eaiv.firmware eaiv.tinyml eaiv.sensor_fusion eaiv.rt_perf eaiv.hil
+(qemu/serial (flash, boot, (benchmark  (compl/Mahony/     (WCET,       (faults,
+ /jlink/sim) pattern match) lat/mem)   Madgwick/KF/EKF)   jitter)      replay, sim)
+                                 │
+     everything above is constructed through eaiv.plugins (registry +
+     entry-point discovery); eaiv.datasets provides seeded replay logs
+                                 │
                          ┌──────────▼───────────┐
                          │  eaiv.core.Reporter    │
                          │  console / JSON / HTML │
@@ -42,8 +45,14 @@ A `Target` is anything that can `flash()`, `reset()`, `run_command()`, and
   that as a documented stub since RTT block addresses are firmware- and
   board-specific.
 
-New backends implement the four abstract methods in `eaiv.targets.base.Target`
-and register in `eaiv.targets.build_target`.
+- **`sim`** — in-process simulated device (`eaiv.hil.SimulatedTarget`):
+  boots, streams telemetry from a dataset or the synthetic generator, and
+  reports a test verdict. Lets the firmware suite run with zero external
+  dependencies.
+
+New backends implement the abstract methods of `eaiv.plugins.targets.Target`
+and register with `@register_plugin("<name>", "target", ...)` — the config's
+`target.kind` resolves through the plugin registry.
 
 ## Suites
 
@@ -59,8 +68,11 @@ compose independently of the CLI and can be imported and run directly (see
   reports latency percentiles, throughput, model size, and a rough MAC
   estimate.
 - **`sensor_fusion.FusionExperiment`** — replays a recorded IMU CSV
-  through a Kalman / complementary / Mahony filter and reports RMSE
+  through any registered fusion filter and reports RMSE
   against a reference column (if present), drift, and sample period.
+- **`hil.HILExperiment`** — replays a dataset clean and through a
+  configured fault chain (noise, packet loss, jitter, outages), scores a
+  fusion filter on both, and reports the accuracy degradation.
 - **`rt_perf.RTProfiler`** — parses `TASK <name> exec_us=<n> jitter_us=<n>`
   lines from the target's command channel (or generates a synthetic trace
   when no target/telemetry is available) and reports WCET, deadline
@@ -78,3 +90,19 @@ YAML configs support a single-level `inherit: other.yaml` key. The parent
 is loaded and deep-merged with the child so environment-specific configs
 (e.g. `configs/stm32h7.yaml`) only need to specify what differs from
 `configs/default.yaml`.
+
+## Plugin system (`eaiv.plugins`)
+
+Targets, fusion filters, and fault models are all constructed through a
+single registry keyed by `(plugin_type, name)`. Built-ins self-register on
+import; external packages contribute via the `eaiv.plugins` entry-point
+group, loaded by `load_entry_point_plugins()`. `eaiv plugins` lists
+everything registered.
+
+## Datasets (`eaiv.datasets`) and HIL (`eaiv.hil`)
+
+The dataset generator produces seeded, analytically-derived IMU logs with
+ground-truth orientation; committed logs under `datasets/imu/` are exactly
+reproducible. The HIL layer streams those logs (or live synthetic data)
+through composable fault models and into either fusion scoring or a fully
+simulated target device — see [../hil/README.md](../hil/README.md).

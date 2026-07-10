@@ -1,4 +1,5 @@
 """Run firmware under qemu-system-arm (no hardware required)."""
+
 from __future__ import annotations
 
 import shutil
@@ -25,11 +26,15 @@ class QEMUTarget(Target):
         self._proc = subprocess.Popen(
             [
                 "qemu-system-arm",
-                "-M", self.machine,
-                "-cpu", self.cpu,
-                "-kernel", binary,
+                "-M",
+                self.machine,
+                "-cpu",
+                self.cpu,
+                "-kernel",
+                binary,
                 "-nographic",
-                "-serial", "mon:stdio",
+                "-serial",
+                "mon:stdio",
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,

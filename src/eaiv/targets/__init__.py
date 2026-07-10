@@ -16,19 +16,23 @@ Built-in Targets:
     - serial: Serial connection
     - jlink: J-Link debugger
 """
+
 from __future__ import annotations
 
+from eaiv.plugins import get_registry, register_plugin
 from eaiv.plugins.targets import Target, TargetInfo
-from eaiv.plugins import get_registry
-
-# Import implementations
+from eaiv.targets.jlink import JLinkTarget
 from eaiv.targets.qemu import QEMUTarget
 from eaiv.targets.serial import SerialTarget
-from eaiv.targets.jlink import JLinkTarget
 
 
 def build_target(spec: dict) -> Target:
     """Build a target from configuration.
+
+    The plugin registry is the single construction path: built-in targets
+    are registered on import, and third-party targets registered via
+    ``register_plugin`` (or the ``eaiv.plugins`` entry-point group) are
+    picked up automatically.
 
     Args:
         spec: Target configuration dict with 'kind' key
@@ -40,62 +44,35 @@ def build_target(spec: dict) -> Target:
         ValueError: If target kind is unknown
     """
     kind = spec.get("kind", "qemu")
-    registry = get_registry()
-
-    # Try plugin registry first
-    try:
-        return registry.create("target", kind, spec)
-    except ValueError:
-        pass  # Fall through to built-in targets
-
-    # Built-in target factory
-    factories = {
-        "qemu": lambda cfg: QEMUTarget(cfg),
-        "serial": lambda cfg: SerialTarget(cfg),
-        "jlink": lambda cfg: JLinkTarget(cfg),
-    }
-
-    if kind not in factories:
-        raise ValueError(
-            f"Unknown target kind: {kind}. Available: {list(factories.keys())}"
-        )
-
-    return factories[kind](spec)
+    target = get_registry().create("target", kind, spec)
+    if not isinstance(target, Target):
+        raise TypeError(f"Plugin 'target:{kind}' did not produce a Target: {type(target)!r}")
+    return target
 
 
-# Register built-in targets with plugin registry
-from eaiv.plugins import register_plugin
+register_plugin(
+    "qemu",
+    "target",
+    "QEMU ARM emulator target",
+    version="1.0.0",
+    supported_hardware=["qemu"],
+)(QEMUTarget)
 
+register_plugin(
+    "serial",
+    "target",
+    "Serial connection target",
+    version="1.0.0",
+    supported_hardware=["*"],
+)(SerialTarget)
 
-def _register_targets() -> None:
-    """Register built-in targets with the plugin registry."""
-    register_plugin(
-        "qemu",
-        "target",
-        "QEMU ARM emulator target",
-        version="1.0.0",
-        supported_hardware=["qemu"],
-    )(lambda cfg: QEMUTarget(cfg))
-
-    register_plugin(
-        "serial",
-        "target",
-        "Serial connection target",
-        version="1.0.0",
-        supported_hardware=["*"],
-    )(lambda cfg: SerialTarget(cfg))
-
-    register_plugin(
-        "jlink",
-        "target",
-        "J-Link debugger target",
-        version="1.0.0",
-        dependencies=["pylink-square"],
-    )(lambda cfg: JLinkTarget(cfg))
-
-
-# Auto-register on import
-_register_targets()
+register_plugin(
+    "jlink",
+    "target",
+    "J-Link debugger target",
+    version="1.0.0",
+    dependencies=["pylink-square"],
+)(JLinkTarget)
 
 
 __all__ = [

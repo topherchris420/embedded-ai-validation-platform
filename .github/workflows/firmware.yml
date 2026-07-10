@@ -19,8 +19,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PlatformIO
-        uses: platformio/action pio-platform-reset@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
 
       - name: Build ESP32 firmware
         run: pio run -e esp32
@@ -39,8 +45,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PlatformIO
-        uses: platformio/action pio-platform-reset@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
 
       - name: Build ESP32-S3 firmware
         run: pio run -e esp32-s3
@@ -59,8 +71,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PlatformIO
-        uses: platformio/action pio-platform-reset@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
 
       - name: Build STM32 firmware
         run: pio run -e stm32h7
@@ -79,8 +97,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PlatformIO
-        uses: platformio/action pio-platform-reset@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
 
       - name: Build Pico firmware
         run: pio run -e pico

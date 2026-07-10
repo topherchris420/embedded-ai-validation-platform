@@ -4,11 +4,14 @@ Hardware targets are the interfaces used to communicate with embedded devices
 for flashing, testing, and profiling. This module provides the plugin interface
 for target backends.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from eaiv.plugins import register_plugin
 
 if TYPE_CHECKING:
     from eaiv.plugins import PluginMetadata
@@ -17,6 +20,7 @@ if TYPE_CHECKING:
 @dataclass
 class TargetInfo:
     """Information about a target device."""
+
     name: str
     arch: str
     clock_hz: int
@@ -38,8 +42,8 @@ class Target(ABC):
     - info(): Get device information
     """
 
-    def __init__(self, config: dict) -> None:
-        self.config = config
+    def __init__(self, spec: dict) -> None:
+        self.spec = spec
 
     @abstractmethod
     def flash(self, binary: str) -> None:
@@ -99,7 +103,7 @@ class Target(ABC):
     def __enter__(self) -> Target:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         self.close()
 
 
@@ -119,9 +123,6 @@ class TargetPluginMixin:
 
     PLUGIN_METADATA: PluginMetadata = None  # type: ignore[assignment]
 
-
-# Export plugin registration helper
-from eaiv.plugins import register_plugin
 
 __all__ = [
     "Target",

@@ -1,0 +1,9 @@
+# Static ROM/RAM footprint of the ESP32 validation firmware.
+# Build first: cd firmware && pio run -e esp32
+inherit: ../../configs/default.yaml
+
+memory:
+  binary: firmware/.pio/build/esp32/firmware.elf
+  require: true
+  max_rom_kb: 1024
+  max_ram_kb: 256

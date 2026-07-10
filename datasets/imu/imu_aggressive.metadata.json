@@ -1,0 +1,41 @@
+{
+  "name": "imu_aggressive",
+  "description": "Large fast motion for filter stress testing",
+  "domain": "imu",
+  "sampling_rate_hz": 200.0,
+  "sensors": [
+    {
+      "name": "gyroscope",
+      "fields": [
+        "gx",
+        "gy",
+        "gz"
+      ],
+      "units": "rad/s"
+    },
+    {
+      "name": "accelerometer",
+      "fields": [
+        "ax",
+        "ay",
+        "az"
+      ],
+      "units": "g"
+    }
+  ],
+  "ground_truth": [
+    "roll_ref_deg",
+    "pitch_ref_deg"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "generator": {
+    "profile": "aggressive",
+    "seed": 99,
+    "duration_s": 15,
+    "rate_hz": 200,
+    "gyro_noise_std": 0.005,
+    "accel_noise_std": 0.01
+  },
+  "schema_version": 1
+}

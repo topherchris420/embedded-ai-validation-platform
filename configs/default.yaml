@@ -23,12 +23,29 @@ tinyml:
   inputs: datasets/cifar10_sample.npy
   iterations: 50
   warmup: 5
+  power: {}               # e.g. {kind: sim, active_mw: 180} to add energy metrics
+
+memory:
+  binary: build/firmware.elf   # ELF for static ROM/RAM footprint analysis
+  model: models/mobilenet_v1_0.25_128_int8.tflite
+  require: false               # missing binary => suite is skipped, not failed
 
 sensor_fusion:
-  source: datasets/imu_run1.csv
-  algorithm: kalman      # kalman | complementary | mahony
+  source: datasets/imu/imu_run1.csv
+  algorithm: ekf         # complementary | mahony | madgwick | kalman | ekf
+  params: {}             # forwarded to the filter constructor, e.g. {beta: 0.2}
   sample_rate_hz: 200
   metrics: [rmse, drift_deg_per_min, lag_ms]
+
+hil:
+  source: datasets/imu/imu_run1.csv
+  algorithm: madgwick
+  params: {beta: 0.2}
+  faults:
+    - {kind: noise, std: 0.05, fields: [gx, gy, gz, ax, ay, az]}
+    - {kind: packet_loss, probability: 0.02, seed: 1}
+    - {kind: jitter, std_s: 0.002}
+  max_faulted_rmse_deg: 15.0
 
 rt_perf:
   task_set:

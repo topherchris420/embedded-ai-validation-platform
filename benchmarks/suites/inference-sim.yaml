@@ -1,0 +1,7 @@
+# Inference benchmark, hardware-free: mock runtime + simulated power.
+# Real runs: point tinyml.model at a .tflite/.onnx file and set runtime.
+inherit: ../../configs/sim.yaml
+
+tinyml:
+  iterations: 200
+  warmup: 20

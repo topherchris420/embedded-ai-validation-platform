@@ -4,6 +4,7 @@ Split into its own module to avoid a circular import between
 `orchestrator` (which produces results) and `reporter` (which consumes
 them for display).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -1,92 +1,64 @@
 # Datasets Module
 
-Reusable datasets for embedded AI validation and testing.
+Reusable, replay-capable datasets for embedded AI validation and HIL testing.
 
-## Dataset Formats
+## Committed datasets
 
-### IMU Data (CSV)
+| File | Contents |
+|------|----------|
+| `imu/imu_run1.csv` | 20 s @ 100 Hz, gentle roll/pitch/yaw motion (seed 42) — default fusion replay |
+| `imu/imu_static_biased.csv` | 10 s @ 100 Hz, static with constant gyro bias — bias-estimation testing |
+| `imu/imu_aggressive.csv` | 15 s @ 200 Hz, large fast motion — filter stress testing |
 
-```csv
-timestamp_s,gx,gy,gz,ax,ay,az,mx,my,mz
-0.0,0.001,0.002,-0.0005,0.01,0.02,0.98,25.1,12.3,45.2
+All committed logs are generated with `eaiv.datasets.generate_imu_trajectory`
+using a fixed seed, so they are exactly reproducible:
+
+```python
+from eaiv.datasets import generate_imu_trajectory, write_imu_csv
+
+samples = generate_imu_trajectory(duration_s=20, rate_hz=100, profile="gentle", seed=42)
+write_imu_csv(samples, "datasets/imu/imu_run1.csv")
 ```
 
-Columns:
-- `timestamp_s` - Unix timestamp in seconds
-- `gx, gy, gz` - Gyroscope (rad/s)
-- `ax, ay, az` - Accelerometer (g)
-- `mx, my, mz` - Magnetometer (μT) - optional
-
-### Benchmark Results (JSON)
-
-```json
-{
-  "benchmark": "mobilenet_v1",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "target": "esp32",
-  "metrics": {
-    "latency_mean_ms": 45.2,
-    "ram_peak_kb": 128,
-    "flash_model_kb": 342
-  }
-}
-```
-
-### Test Results (JSON)
-
-```json
-{
-  "test_suite": "firmware",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "passed": true,
-  "duration_s": 12.5,
-  "metrics": {
-    "test_count": 10,
-    "passed_count": 10,
-    "failed_count": 0
-  }
-}
-```
-
-## Included Datasets
-
-| Dataset | Description | Size | Format |
-|---------|-------------|------|--------|
-| `imu_walk.csv` | Walking IMU data | 10MB | CSV |
-| `imu_static.csv` | Static IMU data | 1MB | CSV |
-| `imu_rotation.csv` | Rotation test data | 5MB | CSV |
-| `gps_route.csv` | GPS route data | 2MB | CSV |
-
-## Replay Tools
+or from the CLI (which also writes the metadata sidecar):
 
 ```bash
-# Replay IMU dataset
-eaiv replay datasets/imu_walk.csv
-
-# Convert to different format
-eaiv convert datasets/imu_walk.csv --output imu_walk.json
-
-# Generate synthetic data
-eaiv generate imu --output synthetic.csv --duration 60
+eaiv datasets generate --profile gentle --duration 20 --rate 100 --seed 42 -o my_log.csv
 ```
 
-## Adding New Datasets
+## Metadata and validation
 
-1. Add dataset to appropriate subdirectory
-2. Create `README.md` in dataset folder
-3. Add metadata to `datasets/index.json`
+Every dataset carries a `<name>.metadata.json` sidecar (schema:
+`eaiv.datasets.DatasetMetadata`) declaring its sensors, units, sampling
+rate, ground-truth columns, version, license, and — for synthetic logs —
+the exact generator parameters that reproduce it. Conventional domains:
+`imu`, `robotics`, `navigation`, `wearables`, `industrial`.
 
-## Dataset Index
-
-```json
-{
-  "imu_walk": {
-    "path": "imu/walk.csv",
-    "description": "10 minutes of walking IMU data",
-    "duration_s": 600,
-    "sample_rate_hz": 200,
-    "sensors": ["accel", "gyro"],
-    "license": "MIT"
-  }
-}
+```bash
+eaiv datasets validate datasets/          # exits non-zero on any problem
 ```
+
+Validation checks sidecar presence and schema, declared-vs-actual columns,
+strictly monotonic timestamps, and observed-vs-declared sample rate (±5%).
+CI validates every committed dataset.
+
+## IMU CSV schema
+
+```csv
+t_s,gx,gy,gz,ax,ay,az,roll_ref_deg,pitch_ref_deg
+0.000000,0.188496,0.001000,0.002000,0.010000,0.020000,0.980000,0.0000,0.0000
+```
+
+- `t_s` — sample time in seconds from log start
+- `gx, gy, gz` — gyroscope body rates (rad/s)
+- `ax, ay, az` — accelerometer (g)
+- `roll_ref_deg, pitch_ref_deg` — ground-truth orientation (synthetic logs
+  only); fusion experiments compute RMSE against these when present
+
+The schema is what `eaiv.sensor_fusion.experiments.FusionExperiment` and the
+HIL replay source consume directly.
+
+## Benchmark results (JSON)
+
+Benchmark runs write `reports/latest.json` (see `eaiv.core.reporter`); use
+`eaiv compare` to diff two report files and gate regressions in CI.

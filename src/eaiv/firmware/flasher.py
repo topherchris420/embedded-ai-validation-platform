@@ -1,9 +1,10 @@
 """Helpers for inspecting ELF binaries: sections, loadable segments, sizes."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from elftools.elf.elffile import ELFFile  # type: ignore
+from elftools.elf.elffile import ELFFile
 
 
 def elf_sections(path: str) -> list[dict]:

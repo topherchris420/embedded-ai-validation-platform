@@ -7,6 +7,7 @@ available (e.g. `rt` suite run standalone against a stub), it falls back
 to a synthetic trace generator so the suite remains runnable for CI smoke
 tests and local development without hardware attached.
 """
+
 from __future__ import annotations
 
 import random
@@ -92,7 +93,7 @@ class RTProfiler:
                 lines.append(f"TASK {name} exec_us={max(0, exec_us)} jitter_us={max(0, jitter_us)}")
         return "\n".join(lines)
 
-    def _task_shape(self):
+    def _task_shape(self) -> list[tuple[str, float, float]]:
         return [
             (t["name"], float(t["period_ms"]), float(t["wcet_budget_ms"]))
             for t in self.spec.get("task_set", [])

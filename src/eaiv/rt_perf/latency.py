@@ -1,4 +1,5 @@
 """Latency/jitter statistics for periodic task execution traces."""
+
 from __future__ import annotations
 
 import statistics

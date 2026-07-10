@@ -1,4 +1,5 @@
 """Line-buffered serial reader with timeout-aware pattern matching."""
+
 from __future__ import annotations
 
 import re

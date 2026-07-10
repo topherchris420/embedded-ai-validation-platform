@@ -1,4 +1,5 @@
 """Tests for the tinyml benchmark using the built-in mock model backend."""
+
 from __future__ import annotations
 
 from eaiv.tinyml.benchmark import TinyMLBenchmark

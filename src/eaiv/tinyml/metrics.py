@@ -1,4 +1,5 @@
 """TinyML metrics: latency distribution, throughput, RAM/ROM, MACs."""
+
 from __future__ import annotations
 
 import statistics
@@ -49,11 +50,14 @@ class LatencyStats:
             "mean_ms": round(self.mean_ms(), 3),
             "median_ms": round(self.median_ms(), 3),
             "stdev_ms": round(self.stdev_ms(), 3),
+            "p50_ms": round(self.percentile_ms(50), 3),
             "p90_ms": round(self.percentile_ms(90), 3),
+            "p95_ms": round(self.percentile_ms(95), 3),
             "p99_ms": round(self.percentile_ms(99), 3),
             "min_ms": round(self.min_ms(), 3),
             "max_ms": round(self.max_ms(), 3),
             "throughput_ips": round(self.throughput_ips(), 2),
+            "fps": round(self.throughput_ips(), 2),
         }
 
 

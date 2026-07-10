@@ -1,0 +1,18 @@
+# Fully software-simulated run: firmware + HIL suites work with no
+# hardware, no QEMU, and no model weights installed.
+inherit: default.yaml
+
+target:
+  kind: sim
+  binary: build/firmware.elf
+  sim:
+    telemetry_lines: 50
+
+firmware:
+  timeout_s: 2
+  retries: 0
+  pass_patterns: ["ALL_TESTS_OK"]
+
+tinyml:
+  runtime: mock
+  power: {kind: sim, active_mw: 180.0, seed: 0}

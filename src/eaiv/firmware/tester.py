@@ -1,4 +1,5 @@
 """Firmware smoke/regression tester: flash, boot, watch serial for patterns."""
+
 from __future__ import annotations
 
 import time

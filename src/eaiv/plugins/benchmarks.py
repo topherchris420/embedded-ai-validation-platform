@@ -3,21 +3,23 @@
 Benchmarks measure performance metrics for AI workloads on embedded devices.
 This module provides the plugin interface for benchmark implementations.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from eaiv.plugins import register_plugin
+
 if TYPE_CHECKING:
     from eaiv.plugins import PluginMetadata
-
-import numpy as np
 
 
 @dataclass
 class BenchmarkResult:
     """Result of a single benchmark run."""
+
     name: str
     passed: bool
     metrics: dict = field(default_factory=dict)
@@ -35,6 +37,7 @@ class BenchmarkResult:
 @dataclass
 class BenchmarkConfig:
     """Configuration for a benchmark run."""
+
     model_path: str = ""
     iterations: int = 50
     warmup: int = 5
@@ -46,6 +49,7 @@ class BenchmarkConfig:
 @dataclass
 class LatencyMetrics:
     """Latency measurement results."""
+
     mean_ms: float
     min_ms: float
     max_ms: float
@@ -59,6 +63,7 @@ class LatencyMetrics:
 @dataclass
 class MemoryMetrics:
     """Memory usage measurement results."""
+
     ram_peak_kb: int = 0
     ram_static_kb: int = 0
     ram_runtime_kb: int = 0
@@ -69,6 +74,7 @@ class MemoryMetrics:
 @dataclass
 class ModelMetadata:
     """Metadata about a loaded model."""
+
     name: str
     backend: str  # "tflite", "onnx", "mock"
     input_shape: tuple
@@ -135,12 +141,11 @@ class Benchmark(ABC):
         """
         if not timings:
             return LatencyMetrics(
-                mean_ms=0, min_ms=0, max_ms=0,
-                p50_ms=0, p95_ms=0, p99_ms=0,
-                std_ms=0, count=0
+                mean_ms=0, min_ms=0, max_ms=0, p50_ms=0, p95_ms=0, p99_ms=0, std_ms=0, count=0
             )
 
         import numpy as np
+
         timings_ms = np.array(timings) * 1000  # Convert to ms
 
         return LatencyMetrics(
@@ -198,9 +203,6 @@ class BenchmarkPluginMixin:
 
     PLUGIN_METADATA: PluginMetadata = None  # type: ignore[assignment]
 
-
-# Export plugin registration helper
-from eaiv.plugins import register_plugin
 
 __all__ = [
     "Benchmark",

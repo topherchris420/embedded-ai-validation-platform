@@ -1,4 +1,5 @@
 """Tests for the RT profiler, including the synthetic-trace fallback."""
+
 from __future__ import annotations
 
 from eaiv.rt_perf.profiler import RTProfiler

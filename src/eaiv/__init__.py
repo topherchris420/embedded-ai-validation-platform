@@ -17,9 +17,10 @@ Quick Start:
     orch = Orchestrator(cfg)
     results = orch.run("all")
 """
+
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Core exports
 from eaiv.config import load_config, Config  # noqa: E402
@@ -32,6 +33,7 @@ from eaiv.plugins import (  # noqa: E402
     PluginMetadata,
     register_plugin,
     get_registry,
+    load_entry_point_plugins,
 )
 from eaiv.plugins.targets import Target, TargetInfo  # noqa: E402
 from eaiv.plugins.sensors import (  # noqa: E402
@@ -63,6 +65,7 @@ __all__ = [
     "PluginMetadata",
     "register_plugin",
     "get_registry",
+    "load_entry_point_plugins",
     # Targets
     "Target",
     "TargetInfo",
