@@ -6,6 +6,7 @@ from eaiv.config import Config
 from eaiv.core.reporter import Reporter
 from eaiv.core.results import AggregateResult, SuiteResult
 from eaiv.firmware.tester import FirmwareTester
+from eaiv.hil.suite import HILExperiment
 from eaiv.rt_perf.profiler import RTProfiler
 from eaiv.sensor_fusion.experiments import FusionExperiment
 from eaiv.targets import build_target
@@ -35,6 +36,8 @@ class Orchestrator:
             results.add(TinyMLBenchmark(self.cfg["tinyml"], target).run())
         if suite in ("fusion", "all"):
             results.add(FusionExperiment(self.cfg["sensor_fusion"]).run())
+        if suite in ("hil", "all"):
+            results.add(HILExperiment(self.cfg.get("hil", {})).run())
         if suite in ("rt", "all"):
             results.add(RTProfiler(self.cfg["rt_perf"], target).run())
 

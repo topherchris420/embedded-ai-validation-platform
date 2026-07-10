@@ -31,6 +31,16 @@ sensor_fusion:
   sample_rate_hz: 200
   metrics: [rmse, drift_deg_per_min, lag_ms]
 
+hil:
+  source: datasets/imu/imu_run1.csv
+  algorithm: madgwick
+  params: {beta: 0.2}
+  faults:
+    - {kind: noise, std: 0.05, fields: [gx, gy, gz, ax, ay, az]}
+    - {kind: packet_loss, probability: 0.02, seed: 1}
+    - {kind: jitter, std_s: 0.002}
+  max_faulted_rmse_deg: 15.0
+
 rt_perf:
   task_set:
     - name: control_loop

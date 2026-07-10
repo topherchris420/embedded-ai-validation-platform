@@ -21,7 +21,7 @@ def main() -> None:
 @click.option("--config", "config_path", required=True, type=click.Path(exists=True))
 @click.option(
     "--suite",
-    type=click.Choice(["firmware", "tinyml", "fusion", "rt", "all"]),
+    type=click.Choice(["firmware", "tinyml", "fusion", "hil", "rt", "all"]),
     default="all",
     help="Which validation suite to run.",
 )
