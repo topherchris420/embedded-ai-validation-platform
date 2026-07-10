@@ -138,6 +138,8 @@ class SimulatedTarget(Target):
             return "eaiv-sim v1"
         if cmd == "ping":
             return "pong"
+        if cmd == "status":
+            return "S heap=524288 uptime_ms=1000 cpu_hz=100000000 temp_c=42.0"
         return f"ERR unknown command: {cmd}"
 
     def read_serial(self, duration_s: float) -> str:

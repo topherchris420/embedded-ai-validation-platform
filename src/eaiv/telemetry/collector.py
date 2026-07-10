@@ -13,6 +13,8 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from typing import TYPE_CHECKING
+
 from eaiv.plugins.targets import Target
 from eaiv.telemetry.adapter import TelemetryAdapter, build_adapter
 from eaiv.telemetry.protocol import (
@@ -23,6 +25,9 @@ from eaiv.telemetry.protocol import (
     TelemetryRecord,
     VerdictRecord,
 )
+
+if TYPE_CHECKING:
+    from eaiv.telemetry.provider import TelemetryProvider
 
 
 @dataclass
@@ -49,6 +54,11 @@ class TelemetryCollector:
     def collect(self, target: Target, duration_s: float) -> None:
         """Read serial output from a target for a duration and ingest it."""
         self.feed(target.read_serial(duration_s))
+
+    def ingest(self, provider: "TelemetryProvider") -> None:
+        """Consume every record from a telemetry provider (live, replay,
+        or simulated — see ``eaiv.telemetry.provider``)."""
+        self.records.extend(provider.records())
 
     # -- typed views -------------------------------------------------------
 

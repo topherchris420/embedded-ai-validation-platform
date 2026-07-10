@@ -8,6 +8,7 @@ Protocol lines (emitted by ``firmware/src/main.cpp`` and mirrored by
     B iters=1000 us_per_update=3.412 max_us=18
     M heap=294976
     U boot_ms=612
+    S heap=294976 uptime_ms=5210 cpu_hz=240000000 temp_c=41.3
     ALL_TESTS_OK
     FAIL self-test-clock
 
@@ -53,7 +54,7 @@ class BenchRecord:
 class StatRecord:
     """Point-in-time device statistic (``M`` memory / ``U`` uptime lines)."""
 
-    kind: str  # "mem" | "uptime"
+    kind: str  # "mem" | "uptime" | "status"
     values: dict[str, float] = field(default_factory=dict)
 
 
@@ -109,6 +110,8 @@ def parse_line(line: str) -> Record | None:
         return StatRecord(kind="mem", values=_to_floats(_parse_kv(tokens[1:])))
     if head == "U":
         return StatRecord(kind="uptime", values=_to_floats(_parse_kv(tokens[1:])))
+    if head == "S":
+        return StatRecord(kind="status", values=_to_floats(_parse_kv(tokens[1:])))
     if head == "ALL_TESTS_OK":
         return VerdictRecord(passed=True)
     if head == "FAIL":

@@ -54,4 +54,15 @@ inline BoardInfo board_info() {
 // Monotonic microsecond clock used for all latency measurements.
 inline uint32_t now_us() { return micros(); }
 
+// Die/board temperature in Celsius, NAN when the board has no sensor the
+// HAL knows about. Extend per board here — host-side telemetry is
+// field-driven and needs no changes for new metrics.
+inline float board_temperature_c() {
+#if defined(ESP32)
+  return temperatureRead();
+#else
+  return NAN;
+#endif
+}
+
 }  // namespace eaiv

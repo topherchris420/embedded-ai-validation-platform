@@ -120,3 +120,42 @@ def test_simulated_target_emits_boot_stats():
     collector.collect(target, duration_s=0.1)
     kinds = {s.kind for s in collector.stats}
     assert kinds == {"mem", "uptime"}
+
+
+def test_parse_status_line():
+    from eaiv.telemetry import StatRecord
+
+    r = parse_line("S heap=294976 uptime_ms=5210 cpu_hz=240000000 temp_c=41.3")
+    assert isinstance(r, StatRecord) and r.kind == "status"
+    assert r.values["temp_c"] == 41.3
+    assert r.values["cpu_hz"] == 240000000
+
+
+def test_live_provider_with_status_poll():
+    from eaiv.telemetry import LiveTelemetryProvider
+
+    target = build_target({"kind": "sim", "sim": {"telemetry_lines": 5}})
+    target.flash("fw.elf")
+    collector = TelemetryCollector()
+    collector.ingest(LiveTelemetryProvider(target, duration_s=0.1, poll_status=True))
+    assert len(collector.telemetry) == 5
+    status = [s for s in collector.stats if s.kind == "status"]
+    assert status and status[0].values["temp_c"] == 42.0
+
+
+def test_replay_provider_reads_dataset():
+    from eaiv.telemetry import ReplayTelemetryProvider
+
+    collector = TelemetryCollector()
+    collector.ingest(ReplayTelemetryProvider("datasets/imu/imu_run1.csv"))
+    assert len(collector.telemetry) == 2000
+    assert "gx" in collector.telemetry[0].values
+
+
+def test_simulated_provider_is_deterministic():
+    from eaiv.telemetry import SimulatedTelemetryProvider
+
+    a = list(SimulatedTelemetryProvider(duration_s=0.2, seed=3).records())
+    b = list(SimulatedTelemetryProvider(duration_s=0.2, seed=3).records())
+    assert a == b
+    assert len(a) == 20

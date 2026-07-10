@@ -15,6 +15,12 @@ benchmark suites consume:
 from __future__ import annotations
 
 from eaiv.telemetry.adapter import TelemetryAdapter, build_adapter
+from eaiv.telemetry.provider import (
+    LiveTelemetryProvider,
+    ReplayTelemetryProvider,
+    SimulatedTelemetryProvider,
+    TelemetryProvider,
+)
 from eaiv.telemetry.collector import TelemetryCollector, TelemetrySummary
 from eaiv.telemetry.protocol import (
     BenchRecord,
@@ -38,6 +44,10 @@ __all__ = [
     "parse_stream",
     "TelemetryAdapter",
     "build_adapter",
+    "TelemetryProvider",
+    "LiveTelemetryProvider",
+    "ReplayTelemetryProvider",
+    "SimulatedTelemetryProvider",
     "TelemetryCollector",
     "TelemetrySummary",
 ]

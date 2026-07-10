@@ -13,6 +13,7 @@
 //   bench  -> "B iters=<n> us_per_update=<mean> max_us=<max>"
 //   mem    -> "M heap=<bytes>"
 //   uptime -> "U ms=<ms>"
+//   status -> "S heap=<bytes> uptime_ms=<ms> cpu_hz=<hz> [temp_c=<c>]"
 //
 // One "M" and one "U boot_ms=..." line are also emitted right before the
 // boot verdict, so a single boot capture carries memory and startup time.
@@ -121,6 +122,19 @@ void handle_command(const String& cmd) {
   } else if (cmd == "uptime") {
     Serial.print("U ms=");
     Serial.println(millis());
+  } else if (cmd == "status") {
+    Serial.print("S heap=");
+    Serial.print(eaiv::free_heap_bytes());
+    Serial.print(" uptime_ms=");
+    Serial.print(millis());
+    Serial.print(" cpu_hz=");
+    Serial.print(eaiv::cpu_hz());
+    const float temp = eaiv::board_temperature_c();
+    if (!isnan(temp)) {
+      Serial.print(" temp_c=");
+      Serial.print(temp, 1);
+    }
+    Serial.println();
   } else if (cmd.length() > 0) {
     Serial.print("ERR unknown command: ");
     Serial.println(cmd);
