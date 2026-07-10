@@ -36,7 +36,7 @@ class FusionExperiment:
                 notes=f"no data loaded from {source!r} (file missing? using synthetic fallback)",
             )
 
-        f = build_filter(algorithm)
+        f = build_filter(algorithm, **self.spec.get("params", {}))
         estimates = []
         prev_t = rows[0]["t_s"]
         for row in rows:
