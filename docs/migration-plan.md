@@ -91,3 +91,36 @@ Each step is one reviewable commit; the platform stays green after each.
 - Power measurement drivers (INA226/PPK2) — interface defined, drivers TBD.
 - Raspberry Pi Zero 2 W target (Linux-class; needs SSH target backend).
 - MkDocs-published API documentation site.
+
+---
+
+## Phase 2 addendum (second audit, post-v0.3)
+
+A follow-up audit against the full platform vision (pytest + PlatformIO +
+MLPerf Tiny + Prometheus/Grafana + HIL) found these gaps, closed in the
+phase-2 commit series:
+
+1. **Tooling below stated bar** — Python floor was 3.11 and mypy was not
+   enforced (and did not pass). → 3.12 floor, `disallow_untyped_defs`
+   clean across `src/eaiv`, mypy in the CI lint job.
+2. **No telemetry pipeline** — firmware emitted structured lines but no
+   host code parsed them. → `eaiv.telemetry` (typed protocol records,
+   per-board adapter plugins, collector with summaries + CSV export),
+   surfaced through `eaiv monitor --summary/--csv`.
+3. **Benchmark coverage too narrow** — inference latency only. →
+   startup time metric, opt-in power/energy metrics behind a
+   `power_monitor` plugin interface (simulated monitor included), a
+   static memory-footprint suite (ELF ROM/RAM + thresholds), and
+   benchmark definitions as YAML under `benchmarks/suites/`.
+4. **Report formats** — console/JSON/HTML only. → added long-format CSV
+   and PR-friendly Markdown.
+5. **Dashboard was non-functional** — wrong file glob, invented metric
+   keys, nonexistent pandas API. → rebuilt on the real report schema
+   with a typed, unit-tested data layer (`eaiv.dashboard`) and verified
+   in headless Chromium.
+6. **Firmware protocol lacked memory/startup visibility** → `mem` /
+   `uptime` commands plus boot-time `M`/`U` stat lines, mirrored by the
+   parser and the simulated target.
+7. **CI gaps** — no docs validation, no benchmark artifacts. → docs
+   link-check job (`ci/check_docs.py`), simulated benchmark-report job
+   publishing `report.md` to the job summary and uploading `reports/`.

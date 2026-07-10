@@ -19,13 +19,16 @@ Verify your environment:
 pytest tests/ -v
 ruff check .
 black --check .
+mypy src/eaiv
+python ci/check_docs.py
 eaiv run --config configs/sim.yaml --suite all   # no hardware required
 ```
 
 ## Code standards
 
-- **Python ≥ 3.11**, type hints on public APIs, docstrings on modules and
-  non-obvious functions.
+- **Python ≥ 3.12**, type hints everywhere (`mypy src/eaiv` must pass —
+  untyped defs are rejected), docstrings on modules and non-obvious
+  functions.
 - **Formatting/linting**: `black` and `ruff` (both enforced in CI),
   100-character lines.
 - **C++ (firmware)**: header-only HAL style, `-Wall -Wextra` clean on all
@@ -54,13 +57,16 @@ never needs to be modified.
 |-----------|-------------|-----------|-----------|
 | Board/target | `target` | `eaiv.plugins.targets.Target` | `src/eaiv/targets/` |
 | Fusion algorithm | `fusion_filter` | `update(dt, gyro, accel) -> Orientation` | `src/eaiv/sensor_fusion/fusion.py` |
+| Power monitor | `power_monitor` | `eaiv.power.PowerMonitor` | `src/eaiv/power/monitor.py` |
+| Telemetry adapter | `telemetry_adapter` | `eaiv.telemetry.TelemetryAdapter` | `src/eaiv/telemetry/adapter.py` |
 | Fault model | `fault` | `eaiv.hil.Fault` | `src/eaiv/hil/faults.py` |
 | Sensor | `sensor` | `eaiv.plugins.sensors.Sensor` | `src/eaiv/plugins/sensors.py` |
 | Benchmark | `benchmark` | `eaiv.plugins.benchmarks.Benchmark` | `src/eaiv/plugins/benchmarks.py` |
 
 External packages can ship plugins by exposing a module in the
 `eaiv.plugins` entry-point group; it is imported (and thus registered) by
-`eaiv.plugins.load_entry_point_plugins()`.
+`eaiv.plugins.load_entry_point_plugins()`. Full walkthrough:
+[docs/plugin-development.md](docs/plugin-development.md).
 
 Adding a **firmware board** is config-only: see "Adding a board" in
 [firmware/README.md](firmware/README.md).

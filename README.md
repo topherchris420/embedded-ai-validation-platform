@@ -2,7 +2,8 @@
 
 An industry-grade platform for validating, benchmarking, profiling, and testing embedded AI systems running on resource-constrained hardware.
 
-![Platform](https://img.shields.io/badge/python-3.12%2B-blue)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![Typed](https://img.shields.io/badge/mypy-strict-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![CI](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml)
 
@@ -29,6 +30,8 @@ This platform is designed to be the equivalent of **pytest + PlatformIO + MLPerf
 - **Dashboard** - Real-time visualization of metrics and benchmark results
 - **Plugin Architecture** - Easy extension for new boards, sensors, benchmarks, filters, faults
 - **Regression Gating** - `eaiv compare` diffs report artifacts and fails CI on metric regressions
+- **Telemetry Pipeline** - typed serial protocol, per-board adapter plugins, live capture to CSV/statistics
+- **Power & Memory** - energy-per-inference via `power_monitor` plugins; static ROM/RAM budget gates
 
 ## 🏗️ Architecture
 
@@ -162,6 +165,8 @@ for target-backend details and how to add a board.
 | CPU Utilization | Processor usage (%) |
 | Power Consumption | Energy draw (mW) |
 | Startup Time | Time to first inference (ms) |
+| Energy per Inference | mJ, via `power_monitor` plugins |
+| ROM / static RAM | ELF footprint analysis (KB) |
 
 ## 🔌 Plugin System
 
@@ -226,8 +231,12 @@ GitHub Actions workflows are included for:
 - [Usage Guide](docs/usage.md)
 - [Configuration Reference](docs/config-reference.md)
 - [Supported Hardware](docs/hardware.md)
+- [Developer Guide](docs/developer-guide.md)
+- [Plugin Development](docs/plugin-development.md)
 - [HIL Testing](hil/README.md)
 - [Firmware](firmware/README.md)
+- [Benchmarks](benchmarks/README.md)
+- [Dashboard](dashboard/README.md)
 - [Migration Plan / ADR](docs/migration-plan.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
