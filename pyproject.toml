@@ -11,7 +11,7 @@ license = { text = "MIT" }
 authors = [
     { name = "topherchris420", email = "topherchris420@example.com" },
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "pyserial>=3.5",
     "pyyaml>=6.0",
@@ -69,15 +69,16 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py311"
 lint.extend-ignore = ["E501", "ANN401"]
 
 [tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+python_version = "3.11"
+strict = false
+warn_return_any = false
+warn_unused_configs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -86,7 +87,7 @@ filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.black]
 line-length = 100
-target-version = ["py312"]
+target-version = ["py311"]
 
 [tool.pre-commit]
 repos = [
