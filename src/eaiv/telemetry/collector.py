@@ -19,6 +19,7 @@ from eaiv.telemetry.protocol import (
     BenchRecord,
     BootRecord,
     Record,
+    StatRecord,
     TelemetryRecord,
     VerdictRecord,
 )
@@ -62,6 +63,10 @@ class TelemetryCollector:
     @property
     def benchmarks(self) -> list[BenchRecord]:
         return [r for r in self.records if isinstance(r, BenchRecord)]
+
+    @property
+    def stats(self) -> list[StatRecord]:
+        return [r for r in self.records if isinstance(r, StatRecord)]
 
     @property
     def verdict(self) -> VerdictRecord | None:

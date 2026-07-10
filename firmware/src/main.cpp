@@ -8,9 +8,14 @@
 //   ALL_TESTS_OK | FAIL <reason>
 //
 // After the verdict the firmware answers line commands:
-//   id    -> "eaiv-fw v<version> board=<name>"
-//   ping  -> "pong"
-//   bench -> "B iters=<n> us_per_update=<mean> max_us=<max>"
+//   id     -> "eaiv-fw v<version> board=<name>"
+//   ping   -> "pong"
+//   bench  -> "B iters=<n> us_per_update=<mean> max_us=<max>"
+//   mem    -> "M heap=<bytes>"
+//   uptime -> "U ms=<ms>"
+//
+// One "M" and one "U boot_ms=..." line are also emitted right before the
+// boot verdict, so a single boot capture carries memory and startup time.
 
 #include <Arduino.h>
 
@@ -110,6 +115,12 @@ void handle_command(const String& cmd) {
     Serial.println("pong");
   } else if (cmd == "bench") {
     run_benchmark();
+  } else if (cmd == "mem") {
+    Serial.print("M heap=");
+    Serial.println(eaiv::free_heap_bytes());
+  } else if (cmd == "uptime") {
+    Serial.print("U ms=");
+    Serial.println(millis());
   } else if (cmd.length() > 0) {
     Serial.print("ERR unknown command: ");
     Serial.println(cmd);
@@ -136,6 +147,11 @@ void setup() {
   }
 
   stream_telemetry();
+
+  Serial.print("M heap=");
+  Serial.println(eaiv::free_heap_bytes());
+  Serial.print("U boot_ms=");
+  Serial.println(millis());
 
   if (!self_test_clock()) {
     Serial.println("FAIL self-test-clock");

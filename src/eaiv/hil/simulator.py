@@ -128,6 +128,8 @@ class SimulatedTarget(Target):
                 break
             fields = " ".join(f"{k}={v:.5f}" for k, v in sorted(values.items()))
             lines.append(f"T t={t_s:.4f} {fields}")
+        lines.append("M heap=524288")
+        lines.append("U boot_ms=42")
         lines.append("FAIL simulated-fault" if self.sim.get("fail") else "ALL_TESTS_OK")
         self._serial_log = lines
 

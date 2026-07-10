@@ -45,9 +45,15 @@ verdict, the firmware answers line commands:
 
 | Command | Response |
 |---------|----------|
-| `id`    | `eaiv-fw v<version> board=<name>` |
-| `ping`  | `pong` |
-| `bench` | `B iters=1000 us_per_update=<mean> max_us=<max>` |
+| `id`     | `eaiv-fw v<version> board=<name>` |
+| `ping`   | `pong` |
+| `bench`  | `B iters=1000 us_per_update=<mean> max_us=<max>` |
+| `mem`    | `M heap=<bytes>` |
+| `uptime` | `U ms=<ms>` |
+
+One `M` line and one `U boot_ms=<ms>` line are also emitted right before
+the boot verdict, so a single boot capture carries free memory and startup
+time; `eaiv monitor --summary` surfaces them via `eaiv.telemetry`.
 
 `bench` times the sensor-fusion update loop on-device, giving a real
 per-board latency figure comparable across hardware.

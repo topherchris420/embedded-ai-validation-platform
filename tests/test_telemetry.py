@@ -99,3 +99,24 @@ def test_monitor_cli_summary_and_csv(tmp_path):
     assert "samples=10" in result.output
     assert "verdict: PASS" in result.output
     assert out.exists()
+
+
+def test_parse_stat_lines():
+    from eaiv.telemetry import StatRecord
+
+    m = parse_line("M heap=294976")
+    assert isinstance(m, StatRecord) and m.kind == "mem"
+    assert m.values["heap"] == 294976
+
+    u = parse_line("U boot_ms=612")
+    assert isinstance(u, StatRecord) and u.kind == "uptime"
+    assert u.values["boot_ms"] == 612
+
+
+def test_simulated_target_emits_boot_stats():
+    target = build_target({"kind": "sim", "sim": {"telemetry_lines": 1}})
+    target.flash("fw.elf")
+    collector = TelemetryCollector()
+    collector.collect(target, duration_s=0.1)
+    kinds = {s.kind for s in collector.stats}
+    assert kinds == {"mem", "uptime"}

@@ -6,6 +6,8 @@ Protocol lines (emitted by ``firmware/src/main.cpp`` and mirrored by
     BOOT eaiv-fw board=esp32 cpu_hz=240000000 heap=294976
     T t=0.0100 gx=0.18850 gy=0.01406 ... roll=0.135 pitch=0.021
     B iters=1000 us_per_update=3.412 max_us=18
+    M heap=294976
+    U boot_ms=612
     ALL_TESTS_OK
     FAIL self-test-clock
 
@@ -48,6 +50,14 @@ class BenchRecord:
 
 
 @dataclass(frozen=True)
+class StatRecord:
+    """Point-in-time device statistic (``M`` memory / ``U`` uptime lines)."""
+
+    kind: str  # "mem" | "uptime"
+    values: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class VerdictRecord:
     """Terminal self-test verdict."""
 
@@ -55,7 +65,7 @@ class VerdictRecord:
     reason: str = ""
 
 
-Record = Union[BootRecord, TelemetryRecord, BenchRecord, VerdictRecord]
+Record = Union[BootRecord, TelemetryRecord, BenchRecord, StatRecord, VerdictRecord]
 
 
 def _parse_kv(tokens: list[str]) -> dict[str, str]:
@@ -95,6 +105,10 @@ def parse_line(line: str) -> Record | None:
         return TelemetryRecord(t_s=t_s, values=values)
     if head == "B":
         return BenchRecord(values=_to_floats(_parse_kv(tokens[1:])))
+    if head == "M":
+        return StatRecord(kind="mem", values=_to_floats(_parse_kv(tokens[1:])))
+    if head == "U":
+        return StatRecord(kind="uptime", values=_to_floats(_parse_kv(tokens[1:])))
     if head == "ALL_TESTS_OK":
         return VerdictRecord(passed=True)
     if head == "FAIL":
