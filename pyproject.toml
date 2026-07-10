@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eaiv"
-version = "0.2.0"
+version = "0.3.0"
 description = "Embedded AI Validation Platform: firmware tests, TinyML benchmarks, sensor-fusion experiments, RT validation."
 readme = "README.md"
 license = { text = "MIT" }
