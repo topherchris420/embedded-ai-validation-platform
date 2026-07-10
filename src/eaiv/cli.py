@@ -192,6 +192,56 @@ def datasets_generate(
     click.echo(f"wrote {len(samples)} samples to {path}")
 
 
+@main.command()
+@click.option("--config", "config_path", required=True, type=click.Path(exists=True))
+@click.option("--suite", default="all", help="Suite selection, as in 'eaiv run'.")
+@click.option("--build-env", default=None, help="PlatformIO env to build first (e.g. esp32).")
+@click.option("--baseline", "baseline_name", default=None, help="Baseline name to gate against.")
+@click.option("--save-baseline", default=None, help="Promote this run to a named baseline.")
+@click.option("--baseline-dir", default="baselines", type=click.Path())
+@click.option("--telemetry-duration", default=0.0, help="Seconds of telemetry to capture (0=skip).")
+@click.option("--max-regression-pct", default=10.0)
+@click.option("--report-dir", default="reports", type=click.Path())
+def pipeline(
+    config_path: str,
+    suite: str,
+    build_env: str | None,
+    baseline_name: str | None,
+    save_baseline: str | None,
+    baseline_dir: str,
+    telemetry_duration: float,
+    max_regression_pct: float,
+    report_dir: str,
+) -> None:
+    """Run the full validation pipeline: build, validate, telemetry, compare.
+
+    Exit code 0 only if every stage, every suite, and the regression gate
+    pass — designed as a single CI entry point.
+    """
+    from eaiv.core.baseline import BaselineStore
+    from eaiv.core.pipeline import ValidationPipeline
+
+    _load_all_plugins()
+    cfg = load_config(config_path)
+    pipe = ValidationPipeline(
+        cfg, report_dir=report_dir, baseline_store=BaselineStore(baseline_dir)
+    )
+    result = pipe.run(
+        suite=suite,
+        build_env=build_env,
+        baseline=baseline_name,
+        save_baseline=save_baseline,
+        telemetry_s=telemetry_duration,
+        max_regression_pct=max_regression_pct,
+    )
+    for stage in result.stages:
+        click.echo(
+            f"[{stage.status:>7}] {stage.name:<14} {stage.duration_s:>8.3f}s  {stage.detail}"
+        )
+    click.echo("pipeline: PASS" if result.passed else "pipeline: FAIL")
+    sys.exit(0 if result.passed else 1)
+
+
 @main.group()
 def baseline() -> None:
     """Manage named baseline reports for regression gating."""
