@@ -1,4 +1,5 @@
 """Top-level orchestrator that runs suites and aggregates results."""
+
 from __future__ import annotations
 
 from eaiv.config import Config

@@ -16,6 +16,7 @@ Built-in Targets:
     - serial: Serial connection
     - jlink: J-Link debugger
 """
+
 from __future__ import annotations
 
 from eaiv.plugins import get_registry, register_plugin
@@ -56,9 +57,7 @@ def build_target(spec: dict) -> Target:
     }
 
     if kind not in factories:
-        raise ValueError(
-            f"Unknown target kind: {kind}. Available: {list(factories.keys())}"
-        )
+        raise ValueError(f"Unknown target kind: {kind}. Available: {list(factories.keys())}")
 
     return factories[kind](spec)
 

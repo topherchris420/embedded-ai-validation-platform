@@ -1,4 +1,5 @@
 """Load .tflite / .onnx models with a uniform interface."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,7 +10,7 @@ from typing import Any
 @dataclass
 class ModelMeta:
     path: str
-    backend: str        # 'tflite' | 'onnx' | 'mock'
+    backend: str  # 'tflite' | 'onnx' | 'mock'
     input_shape: tuple
     output_shape: tuple
     size_bytes: int

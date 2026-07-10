@@ -1,4 +1,5 @@
 """Tests for sensor fusion filters and the CSV-replay experiment."""
+
 from __future__ import annotations
 
 import csv

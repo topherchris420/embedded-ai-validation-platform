@@ -3,6 +3,7 @@ through the CLI or a hardware target.
 
 Run: python examples/benchmark_mobilenet.py
 """
+
 from __future__ import annotations
 
 import json

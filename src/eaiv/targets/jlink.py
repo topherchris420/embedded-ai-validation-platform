@@ -1,4 +1,5 @@
 """J-Link target using pylink-square if available, else the JLinkExe CLI."""
+
 from __future__ import annotations
 
 import shutil
@@ -28,9 +29,7 @@ class JLinkTarget(Target):
         if self._jlink is None:
             self._jlink = self._pylink.JLink()
             self._jlink.open()
-            self._jlink.set_tif(
-                getattr(self._pylink.enums.JLinkInterfaces, self.interface.upper())
-            )
+            self._jlink.set_tif(getattr(self._pylink.enums.JLinkInterfaces, self.interface.upper()))
             self._jlink.connect(self.device)
         return self._jlink
 

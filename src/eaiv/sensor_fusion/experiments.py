@@ -1,4 +1,5 @@
 """Replay a recorded IMU CSV through a fusion filter and score the result."""
+
 from __future__ import annotations
 
 import csv

@@ -1,4 +1,5 @@
 """Physical target attached over UART (e.g. USB-CDC on a dev board)."""
+
 from __future__ import annotations
 
 import time

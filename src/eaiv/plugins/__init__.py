@@ -14,6 +14,7 @@ Architecture:
 - PluginRegistry tracks all registered plugins
 - Factory functions create plugin instances from config
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,6 +27,7 @@ T = TypeVar("T")
 @dataclass
 class PluginMetadata:
     """Metadata for a registered plugin."""
+
     name: str
     version: str
     description: str
@@ -56,11 +58,7 @@ class PluginRegistry:
             self._plugins: dict[str, PluginMetadata] = {}
             self._factories: dict[str, Callable[[dict], object]] = {}
 
-    def register(
-        self,
-        metadata: PluginMetadata,
-        factory: Callable[[dict], object]
-    ) -> None:
+    def register(self, metadata: PluginMetadata, factory: Callable[[dict], object]) -> None:
         """Register a plugin with its metadata and factory function.
 
         Args:
@@ -82,10 +80,7 @@ class PluginRegistry:
         """List all registered plugins, optionally filtered by type."""
         if plugin_type is None:
             return list(self._plugins.values())
-        return [
-            p for p in self._plugins.values()
-            if p.plugin_type == plugin_type
-        ]
+        return [p for p in self._plugins.values() if p.plugin_type == plugin_type]
 
     def create(self, plugin_type: str, name: str, config: dict) -> object:
         """Create a plugin instance from config.
@@ -145,6 +140,7 @@ def register_plugin(
     Returns:
         Decorator function
     """
+
     def decorator(factory: Callable[[dict], T]) -> Callable[[dict], T]:
         metadata = PluginMetadata(
             name=name,
@@ -158,6 +154,7 @@ def register_plugin(
         registry = PluginRegistry()
         registry.register(metadata, factory)
         return factory
+
     return decorator
 
 

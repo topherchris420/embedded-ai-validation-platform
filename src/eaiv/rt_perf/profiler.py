@@ -7,6 +7,7 @@ available (e.g. `rt` suite run standalone against a stub), it falls back
 to a synthetic trace generator so the suite remains runnable for CI smoke
 tests and local development without hardware attached.
 """
+
 from __future__ import annotations
 
 import random

@@ -4,6 +4,7 @@ A config file may set an `inherit: other.yaml` key (path relative to the
 file itself). The parent is loaded first and deep-merged with the child,
 so child values override parent values key-by-key rather than wholesale.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

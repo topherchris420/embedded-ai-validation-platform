@@ -1,4 +1,5 @@
 """TinyML metrics: latency distribution, throughput, RAM/ROM, MACs."""
+
 from __future__ import annotations
 
 import statistics

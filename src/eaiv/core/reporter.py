@@ -1,4 +1,5 @@
 """Multi-format reporting: console table, JSON artifact, static HTML page."""
+
 from __future__ import annotations
 
 import json

@@ -4,6 +4,7 @@ Sensors provide data streams for sensor fusion and validation. This module
 provides the plugin interface for sensor backends including IMU, GPS, barometer,
 and virtual/simulated sensors.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -21,6 +22,7 @@ import numpy as np
 @dataclass
 class SensorReading:
     """A single sensor reading with timestamp."""
+
     timestamp_s: float
     values: np.ndarray  # Shape depends on sensor type
 
@@ -28,6 +30,7 @@ class SensorReading:
 @dataclass
 class IMUData:
     """IMU sensor data (accelerometer, gyroscope, magnetometer)."""
+
     accel_xyz_g: np.ndarray  # Accelerometer in g
     gyro_xyz_rad_s: np.ndarray  # Gyroscope in rad/s
     mag_xyz_muT: np.ndarray | None = None  # Magnetometer in microTesla
@@ -36,6 +39,7 @@ class IMUData:
 @dataclass
 class GPSData:
     """GPS sensor data."""
+
     latitude: float  # degrees
     longitude: float  # degrees
     altitude_m: float  # meters
@@ -47,6 +51,7 @@ class GPSData:
 @dataclass
 class BarometerData:
     """Barometer sensor data."""
+
     pressure_hpa: float  # Pressure in hectopascals
     temperature_c: float | None = None  # Temperature in Celsius
     altitude_m: float | None = None  # Calculated altitude

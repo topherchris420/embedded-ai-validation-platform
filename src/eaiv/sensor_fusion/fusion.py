@@ -5,6 +5,7 @@ produce a running roll/pitch estimate in degrees. These are intentionally
 compact reference implementations for benchmarking/regression purposes,
 not a full AHRS library.
 """
+
 from __future__ import annotations
 
 import math

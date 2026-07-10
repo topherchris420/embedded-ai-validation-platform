@@ -4,6 +4,7 @@ Run with:
     streamlit run dashboard/python/app.py
     eaiv dashboard start
 """
+
 from __future__ import annotations
 
 import json
@@ -118,12 +119,14 @@ def main() -> None:
                 for r in benchmark_results:
                     metrics = r.get("metrics", {})
                     if "latency_mean_ms" in metrics:
-                        latencies.append({
-                            "timestamp": r.get("timestamp", ""),
-                            "mean_ms": metrics["latency_mean_ms"],
-                            "min_ms": metrics.get("latency_min_ms", 0),
-                            "max_ms": metrics.get("latency_max_ms", 0),
-                        })
+                        latencies.append(
+                            {
+                                "timestamp": r.get("timestamp", ""),
+                                "mean_ms": metrics["latency_mean_ms"],
+                                "min_ms": metrics.get("latency_min_ms", 0),
+                                "max_ms": metrics.get("latency_max_ms", 0),
+                            }
+                        )
 
                 if latencies:
                     df = px.data.DataFrame(latencies)
@@ -159,7 +162,9 @@ def main() -> None:
             df = sensor_data[sensor_name]
 
             # Check for IMU columns
-            imu_cols = [c for c in df.columns if any(s in c for s in ["ax", "ay", "az", "gx", "gy", "gz"])]
+            imu_cols = [
+                c for c in df.columns if any(s in c for s in ["ax", "ay", "az", "gx", "gy", "gz"])
+            ]
 
             if imu_cols:
                 col1, col2 = st.columns(2)

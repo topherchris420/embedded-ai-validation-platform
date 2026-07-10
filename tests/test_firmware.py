@@ -1,4 +1,5 @@
 """Tests for the firmware suite using a fake in-memory Target."""
+
 from __future__ import annotations
 
 from eaiv.firmware.tester import FirmwareTester
@@ -30,7 +31,12 @@ class FakeTarget(Target):
 
 def test_firmware_pass_pattern_matches():
     target = FakeTarget({"binary": "x.elf"}, "booting...\nALL_TESTS_OK\n")
-    spec = {"timeout_s": 1, "retries": 0, "pass_patterns": ["ALL_TESTS_OK"], "fail_patterns": ["FAIL"]}
+    spec = {
+        "timeout_s": 1,
+        "retries": 0,
+        "pass_patterns": ["ALL_TESTS_OK"],
+        "fail_patterns": ["FAIL"],
+    }
     result = FirmwareTester(spec, target).run()
     assert result.passed
     assert result.metrics["attempts"] == 1

@@ -1,4 +1,5 @@
 """On-device (or on-host, via QEMU/serial passthrough) TinyML benchmarking."""
+
 from __future__ import annotations
 
 import time

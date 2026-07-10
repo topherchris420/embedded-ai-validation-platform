@@ -4,6 +4,7 @@ Hardware targets are the interfaces used to communicate with embedded devices
 for flashing, testing, and profiling. This module provides the plugin interface
 for target backends.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 @dataclass
 class TargetInfo:
     """Information about a target device."""
+
     name: str
     arch: str
     clock_hz: int

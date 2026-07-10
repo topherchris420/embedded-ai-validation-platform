@@ -2,6 +2,7 @@
 
 Run: python examples/sensor_fusion_imu.py
 """
+
 from __future__ import annotations
 
 import json

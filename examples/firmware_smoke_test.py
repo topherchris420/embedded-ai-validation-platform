@@ -3,6 +3,7 @@
 Run: python examples/firmware_smoke_test.py
 Requires qemu-system-arm on PATH (apt-get install qemu-system-arm).
 """
+
 from __future__ import annotations
 
 from eaiv.firmware.tester import FirmwareTester
