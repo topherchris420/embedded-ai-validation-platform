@@ -192,6 +192,48 @@ def datasets_generate(
     click.echo(f"wrote {len(samples)} samples to {path}")
 
 
+@main.group()
+def baseline() -> None:
+    """Manage named baseline reports for regression gating."""
+
+
+@baseline.command("save")
+@click.argument("report", type=click.Path(exists=True))
+@click.option("--name", required=True, help="Baseline name (filename-safe).")
+@click.option("--dir", "root", default="baselines", type=click.Path(), help="Baseline directory.")
+def baseline_save(report: str, name: str, root: str) -> None:
+    """Promote a report JSON to a named baseline."""
+    from eaiv.core.baseline import BaselineStore
+
+    path = BaselineStore(root).save(report, name)
+    click.echo(f"saved baseline {name!r} -> {path}")
+
+
+@baseline.command("list")
+@click.option("--dir", "root", default="baselines", type=click.Path(), help="Baseline directory.")
+def baseline_list(root: str) -> None:
+    """List stored baselines."""
+    from eaiv.core.baseline import BaselineStore
+
+    infos = BaselineStore(root).list()
+    if not infos:
+        click.echo(f"no baselines in {root}")
+        return
+    for b in infos:
+        flag = "PASS" if b.all_passed else "FAIL"
+        click.echo(f"{b.name:<24} {b.saved_at:<26} {b.target:<12} eaiv={b.eaiv_version} {flag}")
+
+
+@baseline.command("show")
+@click.argument("name")
+@click.option("--dir", "root", default="baselines", type=click.Path(), help="Baseline directory.")
+def baseline_show(name: str, root: str) -> None:
+    """Print a stored baseline payload."""
+    from eaiv.core.baseline import BaselineStore
+
+    click.echo(json.dumps(BaselineStore(root).load(name), indent=2))
+
+
 @main.command()
 @click.argument("baseline", type=click.Path(exists=True))
 @click.argument("current", type=click.Path(exists=True))
