@@ -10,6 +10,12 @@ This brings the rigor of software testing and continuous integration to the phys
 Application areas: robotics, autonomous systems, industrial automation,
 medical devices, IoT, and edge-AI research.
 
+![Dashboard preview](docs/images/dashboard-preview.png)
+
+*Preview of the validation dashboard — run overview, latency benchmarks, and
+a workflow simulator for selecting target hardware, validation suites, and
+HIL fault injection before kicking off a pipeline run.*
+
 ## Capabilities
 
 | Subsystem | Function |
