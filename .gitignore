@@ -1,3 +1,12 @@
+# Python build artifacts
+src/*.egg-info/
+__pycache__/
+*.pyc
+build/
+dist/
+.coverage
+coverage.xml
+reports/
 
 # PlatformIO build artifacts
 firmware/.pio/

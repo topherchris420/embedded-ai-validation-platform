@@ -19,7 +19,6 @@ dependencies = [
     "pyelftools>=0.29",
     "rich>=13.5",
     "click>=8.1",
-    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -48,10 +47,8 @@ dashboard = [
     "plotly>=5.18",
     "pandas>=2.0",
 ]
-# Hardware-in-the-loop testing
-hil = [
-    "aioresponses>=0.7",
-]
+# Hardware-in-the-loop testing (pure stdlib today; reserved for future deps)
+hil = []
 # Full development environment
 all = [
     "eaiv[dev]",
