@@ -55,9 +55,9 @@ class Simulator:
         for t_s, values in self.source:
             sample: Sample | None = (t_s, values)
             for fault in self.faults:
-                sample = fault.apply(sample[0], sample[1])
                 if sample is None:
                     break
+                sample = fault.apply(sample[0], sample[1])
             if sample is None:
                 self.dropped += 1
             else:

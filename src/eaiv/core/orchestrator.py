@@ -31,14 +31,17 @@ class Orchestrator:
         target = build_target(self.cfg["target"]) if self._needs_target(suite) else None
 
         if suite in ("firmware", "all"):
+            assert target is not None
             results.add(FirmwareTester(self.cfg["firmware"], target).run())
         if suite in ("tinyml", "all"):
+            assert target is not None
             results.add(TinyMLBenchmark(self.cfg["tinyml"], target).run())
         if suite in ("fusion", "all"):
             results.add(FusionExperiment(self.cfg["sensor_fusion"]).run())
         if suite in ("hil", "all"):
             results.add(HILExperiment(self.cfg.get("hil", {})).run())
         if suite in ("rt", "all"):
+            assert target is not None
             results.add(RTProfiler(self.cfg["rt_perf"], target).run())
 
         self.reporter.publish(results)

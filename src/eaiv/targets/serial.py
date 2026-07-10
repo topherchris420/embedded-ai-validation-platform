@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from eaiv.targets.base import Target, TargetInfo
 
@@ -13,9 +14,9 @@ class SerialTarget(Target):
         s = spec.get("serial", {})
         self.port = s.get("port", "/dev/ttyACM0")
         self.baud = s.get("baud", 115200)
-        self._ser = None
+        self._ser: Any = None
 
-    def _open(self):
+    def _open(self) -> Any:
         if self._ser is None:
             import serial  # pyserial
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from typing import Any
 
 from eaiv.targets.base import Target, TargetInfo
 
@@ -14,16 +15,16 @@ class JLinkTarget(Target):
         j = spec.get("jlink", {})
         self.device = j.get("device", "STM32H743VI")
         self.interface = j.get("interface", "swd")
-        self._pylink = None
-        self._jlink = None
+        self._pylink: Any = None
+        self._jlink: Any = None
         try:
-            import pylink  # type: ignore
+            import pylink
 
             self._pylink = pylink
         except ImportError:
             pass
 
-    def _ensure_connected(self):
+    def _ensure_connected(self) -> Any:
         if self._pylink is None:
             raise RuntimeError("pylink-square not installed; pip install '.[jlink]'")
         if self._jlink is None:

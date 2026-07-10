@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Callable, Protocol, cast
 
 
 @dataclass
@@ -21,6 +22,12 @@ class Orientation:
     roll_deg: float
     pitch_deg: float
     yaw_deg: float = 0.0
+
+
+class FusionFilter(Protocol):
+    """Structural interface every fusion filter (built-in or plugin) satisfies."""
+
+    def update(self, dt: float, gyro: tuple, accel: tuple) -> Orientation: ...
 
 
 class ComplementaryFilter:
@@ -115,7 +122,7 @@ class KalmanFilter1D:
         P[0][1] -= K[0] * P01
         P[1][0] -= K[1] * P00
         P[1][1] -= K[1] * P01
-        return s["angle"]
+        return float(s["angle"])
 
     def update(self, dt: float, gyro: tuple, accel: tuple) -> Orientation:
         gx, gy, _ = gyro
@@ -274,18 +281,23 @@ def _register_builtin_filters() -> None:
         "kalman": (KalmanFilter1D, "Independent 1-D Kalman filters"),
         "ekf": (ExtendedKalmanFilter, "EKF with online gyro-bias estimation"),
     }
+
+    def make_factory(cls: type) -> Callable[[dict], object]:
+        def factory(cfg: dict) -> object:
+            return cls(**cfg)
+
+        return factory
+
     registry = get_registry()
     for name, (cls, description) in builtin.items():
         if registry.get("fusion_filter", name) is None:
-            register_plugin(name, "fusion_filter", description, version="1.0.0")(
-                lambda cfg, _cls=cls: _cls(**cfg)
-            )
+            register_plugin(name, "fusion_filter", description, version="1.0.0")(make_factory(cls))
 
 
 _register_builtin_filters()
 
 
-def build_filter(algorithm: str, **params):
+def build_filter(algorithm: str, **params: object) -> FusionFilter:
     """Instantiate a fusion filter registered under ``algorithm``.
 
     Extra keyword arguments are forwarded to the filter constructor
@@ -295,7 +307,7 @@ def build_filter(algorithm: str, **params):
 
     registry = get_registry()
     try:
-        return registry.create("fusion_filter", algorithm, params)
+        return cast(FusionFilter, registry.create("fusion_filter", algorithm, params))
     except ValueError:
         available = [m.name for m in registry.list_plugins("fusion_filter")]
         raise ValueError(

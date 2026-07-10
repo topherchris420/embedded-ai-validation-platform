@@ -117,4 +117,7 @@ def compare_reports(
 
 def load_report(path: str | Path) -> dict:
     """Load a report JSON written by ``eaiv.core.reporter.Reporter``."""
-    return json.loads(Path(path).read_text())
+    payload = json.loads(Path(path).read_text())
+    if not isinstance(payload, dict):
+        raise ValueError(f"Report file is not a JSON object: {path}")
+    return payload

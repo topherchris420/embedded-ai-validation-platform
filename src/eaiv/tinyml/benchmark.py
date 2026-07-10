@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 import numpy as np
 
 from eaiv.core.results import SuiteResult
 from eaiv.targets.base import Target
 from eaiv.tinyml.metrics import LatencyStats, estimate_macs
-from eaiv.tinyml.model_loader import load_model
+from eaiv.tinyml.model_loader import ModelMeta, load_model
 
 
 class TinyMLBenchmark:
@@ -67,7 +68,7 @@ class TinyMLBenchmark:
         return rng.standard_normal(clean_shape).astype("float32")
 
     @staticmethod
-    def _invoke(runtime, meta, x: np.ndarray) -> None:
+    def _invoke(runtime: Any, meta: ModelMeta, x: np.ndarray) -> None:
         if meta.backend == "tflite":
             input_details = runtime.get_input_details()[0]
             runtime.set_tensor(input_details["index"], x.astype(input_details["dtype"]))

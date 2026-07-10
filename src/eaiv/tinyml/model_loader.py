@@ -31,9 +31,9 @@ def load_model(path: str) -> tuple[ModelMeta, Any]:
 
     if suffix == ".tflite":
         try:
-            from tflite_runtime.interpreter import Interpreter  # type: ignore
+            from tflite_runtime.interpreter import Interpreter
         except ImportError:
-            from tensorflow.lite.python.interpreter import Interpreter  # type: ignore
+            from tensorflow.lite.python.interpreter import Interpreter
         interp = Interpreter(model_path=str(p))
         interp.allocate_tensors()
         details_in = interp.get_input_details()[0]
@@ -44,7 +44,7 @@ def load_model(path: str) -> tuple[ModelMeta, Any]:
         return meta, interp
 
     if suffix == ".onnx":
-        import onnxruntime as ort  # type: ignore
+        import onnxruntime as ort
 
         sess = ort.InferenceSession(str(p))
         in0 = sess.get_inputs()[0]
@@ -61,7 +61,7 @@ def _mock_model(path: str) -> tuple[ModelMeta, Any]:
     weights). Keeps `eaiv run` usable out of the box for a first smoke test."""
 
     class _MockRuntime:
-        def invoke(self, x):
+        def invoke(self, x: object) -> object:
             import numpy as np
 
             return np.zeros((1, 10), dtype="float32")

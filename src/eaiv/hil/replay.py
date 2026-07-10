@@ -28,11 +28,19 @@ def synthetic_imu_stream(
     rate_hz: float = 100.0,
     profile: str = "gentle",
     seed: int = 0,
-    **generator_kwargs: float,
+    gyro_noise_std: float = 0.005,
+    accel_noise_std: float = 0.01,
+    gyro_bias: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> Iterator[Sample]:
     """Stream a synthetic IMU trajectory (see ``eaiv.datasets``)."""
     for sample in generate_imu_trajectory(
-        duration_s=duration_s, rate_hz=rate_hz, profile=profile, seed=seed, **generator_kwargs
+        duration_s=duration_s,
+        rate_hz=rate_hz,
+        profile=profile,
+        seed=seed,
+        gyro_noise_std=gyro_noise_std,
+        accel_noise_std=accel_noise_std,
+        gyro_bias=gyro_bias,
     ):
         values = asdict(sample)
         t = values.pop("t_s")

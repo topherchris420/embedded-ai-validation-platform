@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
+from typing import Callable
 
 from eaiv.plugins import get_registry, register_plugin
 
@@ -91,18 +92,23 @@ class SensorOutage(Fault):
 
 
 def _register_builtin_faults() -> None:
-    builtin = {
+    builtin: dict[str, tuple[type[Fault], str]] = {
         "noise": (GaussianNoise, "Additive Gaussian sensor noise"),
         "packet_loss": (PacketLoss, "Random independent sample loss"),
         "jitter": (TimingJitter, "Gaussian timing jitter (monotonic)"),
         "outage": (SensorOutage, "Sensor silent for a time window"),
     }
+
+    def make_factory(cls: type[Fault]) -> Callable[[dict], Fault]:
+        def factory(cfg: dict) -> Fault:
+            return cls(**cfg)
+
+        return factory
+
     registry = get_registry()
     for name, (cls, description) in builtin.items():
         if registry.get("fault", name) is None:
-            register_plugin(name, "fault", description, version="1.0.0")(
-                lambda cfg, _cls=cls: _cls(**cfg)
-            )
+            register_plugin(name, "fault", description, version="1.0.0")(make_factory(cls))
 
 
 _register_builtin_faults()

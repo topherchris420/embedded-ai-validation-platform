@@ -93,7 +93,7 @@ class RTProfiler:
                 lines.append(f"TASK {name} exec_us={max(0, exec_us)} jitter_us={max(0, jitter_us)}")
         return "\n".join(lines)
 
-    def _task_shape(self):
+    def _task_shape(self) -> list[tuple[str, float, float]]:
         return [
             (t["name"], float(t["period_ms"]), float(t["wcet_budget_ms"]))
             for t in self.spec.get("task_set", [])
