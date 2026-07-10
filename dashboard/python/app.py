@@ -7,7 +7,6 @@ Run with:
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 
 import plotly.express as px
@@ -67,7 +66,6 @@ def main() -> None:
 
         st.header("Configuration")
         data_dir = st.text_input("Data Directory", value="reports")
-        refresh = st.slider("Refresh Interval (s)", 1, 60, 5)
 
     # Load data
     data_path = Path(data_dir)

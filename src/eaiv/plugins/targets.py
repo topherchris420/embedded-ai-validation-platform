@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from eaiv.plugins import register_plugin
+
 if TYPE_CHECKING:
     from eaiv.plugins import PluginMetadata
 
@@ -38,8 +40,8 @@ class Target(ABC):
     - info(): Get device information
     """
 
-    def __init__(self, config: dict) -> None:
-        self.config = config
+    def __init__(self, spec: dict) -> None:
+        self.spec = spec
 
     @abstractmethod
     def flash(self, binary: str) -> None:
@@ -119,9 +121,6 @@ class TargetPluginMixin:
 
     PLUGIN_METADATA: PluginMetadata = None  # type: ignore[assignment]
 
-
-# Export plugin registration helper
-from eaiv.plugins import register_plugin
 
 __all__ = [
     "Target",

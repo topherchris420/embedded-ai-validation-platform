@@ -18,8 +18,8 @@ Built-in Targets:
 """
 from __future__ import annotations
 
+from eaiv.plugins import get_registry, register_plugin
 from eaiv.plugins.targets import Target, TargetInfo
-from eaiv.plugins import get_registry
 
 # Import implementations
 from eaiv.targets.qemu import QEMUTarget
@@ -61,10 +61,6 @@ def build_target(spec: dict) -> Target:
         )
 
     return factories[kind](spec)
-
-
-# Register built-in targets with plugin registry
-from eaiv.plugins import register_plugin
 
 
 def _register_targets() -> None:

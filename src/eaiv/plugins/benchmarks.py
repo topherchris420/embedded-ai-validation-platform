@@ -9,10 +9,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from eaiv.plugins import register_plugin
+
 if TYPE_CHECKING:
     from eaiv.plugins import PluginMetadata
-
-import numpy as np
 
 
 @dataclass
@@ -198,9 +198,6 @@ class BenchmarkPluginMixin:
 
     PLUGIN_METADATA: PluginMetadata = None  # type: ignore[assignment]
 
-
-# Export plugin registration helper
-from eaiv.plugins import register_plugin
 
 __all__ = [
     "Benchmark",

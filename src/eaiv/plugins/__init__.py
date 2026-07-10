@@ -16,12 +16,8 @@ Architecture:
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+from typing import Callable, TypeVar
 
 # Type variable for plugin classes
 T = TypeVar("T")

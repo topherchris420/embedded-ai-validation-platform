@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterator
 
+from eaiv.plugins import register_plugin
+
 if TYPE_CHECKING:
     from eaiv.plugins import PluginMetadata
 
@@ -185,9 +187,6 @@ class SensorPluginMixin:
 
     PLUGIN_METADATA: PluginMetadata = None  # type: ignore[assignment]
 
-
-# Export plugin registration helper
-from eaiv.plugins import register_plugin
 
 __all__ = [
     "Sensor",
