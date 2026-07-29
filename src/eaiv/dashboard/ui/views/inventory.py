@@ -105,7 +105,7 @@ def render(workspace: Workspace) -> None:
     chosen_types = st.multiselect("Plugin type", types, default=types, key="inv_types")
     st.dataframe(
         frame[frame["Type"].isin(chosen_types)] if chosen_types else frame,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -178,7 +178,7 @@ def render(workspace: Workspace) -> None:
                 for check in diagnosis.checks
             ]
         ),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 

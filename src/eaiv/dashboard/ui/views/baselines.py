@@ -50,7 +50,7 @@ def render(workspace: Workspace) -> None:
                     "Used by missions": ", ".join(users) or "—",
                 }
             )
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     else:
         st.info(
             "No baselines yet. Promote a passing run below to start gating against it.",
@@ -144,7 +144,7 @@ def render(workspace: Workspace) -> None:
                 for s in payload.get("suites") or []
             ]
         ),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 

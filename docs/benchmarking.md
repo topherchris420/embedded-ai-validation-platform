@@ -50,9 +50,22 @@ INA226/PPK2 drivers implement the same `PowerMonitor` interface
 ## Runtimes
 
 `.tflite` runs on tflite-runtime (or TensorFlow's interpreter), `.onnx`
-on ONNX Runtime. A missing model file falls back to a deterministic mock
-so pipelines stay runnable anywhere — mock results are flagged with
-`"backend": "mock"`.
+on ONNX Runtime. A missing or empty model path — or `runtime: mock` —
+falls back to a deterministic stand-in so pipelines stay runnable anywhere.
+
+Two honesty rules apply to every number this suite produces:
+
+- **Timings are host-side even with a real runtime.** This suite executes
+  the model on the machine running eaiv, not on the device. Reports label
+  the metrics `measured`/`host`, and the on-device harness is the top item
+  on the [roadmap](../ROADMAP.md).
+- **Stand-in results are labelled `mock`** (both in `"backend": "mock"` and
+  in each metric's provenance) and are **never allowed to gate a release**:
+  a stand-in's sub-microsecond timings swing by orders of magnitude between
+  runs. They appear in comparisons as informational.
+
+See [runs-and-reports.md](runs-and-reports.md#measurement-provenance) for
+the full provenance model, including what each suite declares.
 
 ## Cross-board comparability
 

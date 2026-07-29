@@ -79,7 +79,7 @@ def _plot_group(frame: pd.DataFrame, title: str, columns: list[str], x: str | No
         xaxis_title=x or "sample",
         hovermode="x unified",
     )
-    st.plotly_chart(figure, use_container_width=True)
+    st.plotly_chart(figure, width="stretch")
 
 
 def _fault_windows(report: dict[str, Any] | None) -> list[tuple[float, float]]:
@@ -213,7 +213,7 @@ def render(workspace: Workspace) -> None:
                         for start, length in sampling.gaps[:50]
                     ]
                 ),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
     else:
@@ -239,9 +239,7 @@ def render(workspace: Workspace) -> None:
     st.divider()
     st.markdown("**Per-signal statistics**")
     stats = [analyze_signal(name, frame[name].tolist()) for name in numeric_columns]
-    st.dataframe(
-        pd.DataFrame([s.to_dict() for s in stats]), use_container_width=True, hide_index=True
-    )
+    st.dataframe(pd.DataFrame([s.to_dict() for s in stats]), width="stretch", hide_index=True)
     flagged = [s for s in stats if s.outliers]
     if flagged:
         st.caption(
@@ -253,7 +251,7 @@ def render(workspace: Workspace) -> None:
         indices = target.outlier_indices[:200]
         st.dataframe(
             frame.iloc[indices][[c for c in (x_axis, inspect) if c]],
-            use_container_width=True,
+            width="stretch",
         )
 
     pairs = reference_pairs(list(frame.columns))
@@ -297,9 +295,9 @@ def render(workspace: Workspace) -> None:
                 xaxis_title="t (s)",
                 yaxis_title="deg",
             )
-            st.plotly_chart(figure, use_container_width=True)
+            st.plotly_chart(figure, width="stretch")
         if rows:
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     elif not pairs:
         st.caption(
             "No ground-truth columns (`roll_ref_deg`, `pitch_ref_deg`, ...) in this capture, so "

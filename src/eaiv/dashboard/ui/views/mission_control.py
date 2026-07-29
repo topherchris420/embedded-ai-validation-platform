@@ -278,7 +278,7 @@ def render(workspace: Workspace) -> None:
         st.subheader("Recent runs")
         points = recent_activity(store, limit=15)
         if len(points) >= 2:
-            st.plotly_chart(_activity_chart(points), use_container_width=True)
+            st.plotly_chart(_activity_chart(points), width="stretch")
         rows = []
         for manifest in manifests[:8]:
             tone = status_tone(str(manifest.status))
@@ -292,7 +292,7 @@ def render(workspace: Workspace) -> None:
                 }
             )
         if rows:
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
         legacy = [s for s in sources if s.kind == "legacy"]
         if legacy:
             st.caption(

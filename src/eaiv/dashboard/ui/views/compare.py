@@ -188,7 +188,7 @@ def render(workspace: Workspace) -> None:
                     for issue in comparison.compatibility.issues
                 ]
             ),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -219,7 +219,7 @@ def render(workspace: Workspace) -> None:
 
     chart = _delta_chart(comparison.changes)
     if chart is not None:
-        st.plotly_chart(chart, use_container_width=True)
+        st.plotly_chart(chart, width="stretch")
 
     st.subheader("By suite")
     sort_choice = st.radio(
@@ -240,7 +240,7 @@ def render(workspace: Workspace) -> None:
         else:
             items = sorted(items, key=lambda c: c.metric)
         with st.expander(f"{suite} ({len(items)} metrics)", expanded=suite in {"tinyml", "hil"}):
-            st.dataframe(_changes_frame(items), use_container_width=True, hide_index=True)
+            st.dataframe(_changes_frame(items), width="stretch", hide_index=True)
 
     if comparison.added or comparison.removed:
         st.subheader("Coverage changes")
@@ -249,17 +249,13 @@ def render(workspace: Workspace) -> None:
                 "New metrics — present in the candidate, absent from the baseline. They cannot "
                 "regress yet; promote a new baseline to start tracking them."
             )
-            st.dataframe(
-                _changes_frame(comparison.added), use_container_width=True, hide_index=True
-            )
+            st.dataframe(_changes_frame(comparison.added), width="stretch", hide_index=True)
         if comparison.removed:
             st.caption(
                 "Missing metrics — the baseline recorded them and the candidate did not. A "
                 "silently dropped metric is a coverage regression."
             )
-            st.dataframe(
-                _changes_frame(comparison.removed), use_container_width=True, hide_index=True
-            )
+            st.dataframe(_changes_frame(comparison.removed), width="stretch", hide_index=True)
 
     st.subheader("Export")
     columns = st.columns(2)

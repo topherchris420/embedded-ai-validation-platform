@@ -43,7 +43,9 @@ tinyml = [
 qemu = []
 # Dashboard
 dashboard = [
-    "streamlit>=1.30",
+    # 1.49 introduced the `width=` argument that replaced
+    # `use_container_width`, which Streamlit deprecated for removal.
+    "streamlit>=1.49",
     "plotly>=5.18",
     "pandas>=2.0",
 ]

@@ -164,17 +164,17 @@ def render(workspace: Workspace) -> None:
         )
 
     with tabs[1]:
-        st.dataframe(_suite_table(report), use_container_width=True, hide_index=True)
+        st.dataframe(_suite_table(report), width="stretch", hide_index=True)
         suites = [str(s.get("name")) for s in report.get("suites") or []]
         if suites:
             suite = st.selectbox("Suite detail", suites, key="results_suite")
             metrics = numeric_metrics(report, suite)
             chart = _latency_chart(metrics)
             if chart is not None:
-                st.plotly_chart(chart, use_container_width=True)
+                st.plotly_chart(chart, width="stretch")
             table = _metric_table(report, suite)
             if not table.empty:
-                st.dataframe(table, use_container_width=True, hide_index=True)
+                st.dataframe(table, width="stretch", hide_index=True)
             entry: dict[str, Any] = next(
                 (s for s in report.get("suites") or [] if s.get("name") == suite), {}
             )
@@ -188,7 +188,7 @@ def render(workspace: Workspace) -> None:
                             for k, v in values.items()
                         ]
                     ),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
             if entry.get("notes"):
@@ -206,7 +206,7 @@ def render(workspace: Workspace) -> None:
         ]
         st.dataframe(
             pd.DataFrame([{"Field": k, "Value": str(v)} for k, v in rows]),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         inputs = meta.get("inputs") or {}
@@ -225,7 +225,7 @@ def render(workspace: Workspace) -> None:
                         for key, value in inputs.items()
                     ]
                 ),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         thresholds = meta.get("thresholds") or {}
@@ -238,7 +238,7 @@ def render(workspace: Workspace) -> None:
                         for k, v in sorted(thresholds.items())
                     ]
                 ),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         if meta.get("config"):

@@ -117,7 +117,7 @@ def _render_body(workspace: Workspace, run_id: str) -> None:
                         for e in suite_events
                     ]
                 ),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         else:
@@ -138,7 +138,7 @@ def _render_body(workspace: Workspace, run_id: str) -> None:
                         for e in metric_events[-60:]
                     ]
                 ),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 height=260,
             )
@@ -151,7 +151,7 @@ def _render_body(workspace: Workspace, run_id: str) -> None:
             st.subheader("Connected target")
             st.dataframe(
                 pd.DataFrame([{"Property": k, "Value": v} for k, v in info.items()]),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
