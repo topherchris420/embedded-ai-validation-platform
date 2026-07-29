@@ -141,7 +141,7 @@ class ValidationPipeline:
         trigger: str = "cli",
     ) -> PipelineResult:
         result = PipelineResult()
-        session = self.session or self._build_session(
+        session = self.session or self.create_session(
             suite=suite,
             baseline=baseline,
             save_baseline=save_baseline,
@@ -183,15 +183,20 @@ class ValidationPipeline:
 
     # -- session -----------------------------------------------------------
 
-    def _build_session(
+    def create_session(
         self,
         suite: str,
         baseline: str | None,
         save_baseline: str | None,
         max_regression_pct: float,
         run_name: str,
-        trigger: str,
+        trigger: str = "cli",
     ) -> RunSession:
+        """Build the run session (manifest + store + sinks) for one run.
+
+        Public because a front end may want the run id before execution
+        starts, so it can navigate straight to the live view.
+        """
         target_kind = str((self.cfg.get("target", {}) or {}).get("kind", "none"))
         name = run_name or f"{target_kind}/{suite}"
         manifest = RunManifest(

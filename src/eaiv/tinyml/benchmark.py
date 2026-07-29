@@ -32,7 +32,7 @@ class TinyMLBenchmark:
         # inference), measured before the timed loop touches the runtime.
         t_start = time.perf_counter()
         try:
-            meta, runtime = load_model(model_path)
+            meta, runtime = load_model(model_path, str(self.spec.get("runtime", "")))
             x = self._load_input(meta.input_shape)
             self._invoke(runtime, meta, x)
         except Exception as e:  # noqa: BLE001
@@ -110,16 +110,24 @@ class TinyMLBenchmark:
         """
         from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta
 
-        if meta.backend == "mock":
-            provenance, source = MetricProvenance.MOCK, MetricSource.HOST
-        else:
-            provenance, source = MetricProvenance.MEASURED, MetricSource.HOST
+        mock = meta.backend == "mock"
+        provenance, source = (
+            (MetricProvenance.MOCK, MetricSource.HOST)
+            if mock
+            else (MetricProvenance.MEASURED, MetricSource.HOST)
+        )
 
         overrides: dict[str, tuple[MetricProvenance, MetricSource]] = {
             "estimated_macs": (MetricProvenance.ESTIMATED, MetricSource.STATIC_ANALYSIS),
             "tensor_arena_est_kb": (MetricProvenance.ESTIMATED, MetricSource.STATIC_ANALYSIS),
-            "model_size_bytes": (MetricProvenance.MEASURED, MetricSource.STATIC_ANALYSIS),
         }
+        if not mock:
+            # There is no model file behind the mock runtime, so its
+            # "size" is not a measurement of anything.
+            overrides["model_size_bytes"] = (
+                MetricProvenance.MEASURED,
+                MetricSource.STATIC_ANALYSIS,
+            )
         power_spec = self.spec.get("power") or {}
         power_kind = str(power_spec.get("kind", "")).lower()
         power_origin = (

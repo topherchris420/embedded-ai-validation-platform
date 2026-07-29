@@ -324,7 +324,11 @@ def validate_config(
             if spec.advanced and not include_advanced:
                 continue
             if spec.target_kinds and target_kind and target_kind not in spec.target_kinds:
-                if get_nested(body, spec.key) is not None:
+                value = get_nested(body, spec.key)
+                # Shipped configs keep template blocks for every backend, so
+                # flagging one that merely matches its default is pure noise.
+                # A value the engineer actually changed is worth mentioning.
+                if value is not None and value != spec.default:
                     issues.append(
                         ConfigIssue(
                             f"{section.name}.{spec.key}",
