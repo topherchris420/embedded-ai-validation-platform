@@ -90,8 +90,46 @@ class TinyMLBenchmark:
             name="tinyml",
             passed=passed,
             metrics=summary,
-            notes=f"{meta.backend} model, {iterations} timed iterations",
+            notes=(
+                f"{meta.backend} model, {iterations} timed iterations"
+                + (
+                    " (mock runtime: timings reflect the stand-in, not the model)"
+                    if meta.backend == "mock"
+                    else " (host runtime, not on-device)"
+                )
+            ),
+            metric_meta=self._metric_meta(summary, meta),
         )
+
+    def _metric_meta(self, summary: dict, meta: ModelMeta) -> dict:
+        """Declare where each benchmark number came from.
+
+        Timings are host-side even for a real runtime — this suite runs
+        the model on the machine invoking eaiv, so nothing here is an
+        on-device measurement, and the report must not imply otherwise.
+        """
+        from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta
+
+        if meta.backend == "mock":
+            provenance, source = MetricProvenance.MOCK, MetricSource.HOST
+        else:
+            provenance, source = MetricProvenance.MEASURED, MetricSource.HOST
+
+        overrides: dict[str, tuple[MetricProvenance, MetricSource]] = {
+            "estimated_macs": (MetricProvenance.ESTIMATED, MetricSource.STATIC_ANALYSIS),
+            "tensor_arena_est_kb": (MetricProvenance.ESTIMATED, MetricSource.STATIC_ANALYSIS),
+            "model_size_bytes": (MetricProvenance.MEASURED, MetricSource.STATIC_ANALYSIS),
+        }
+        power_spec = self.spec.get("power") or {}
+        power_kind = str(power_spec.get("kind", "")).lower()
+        power_origin = (
+            (MetricProvenance.SIMULATED, MetricSource.SIMULATOR)
+            if power_kind in ("", "sim")
+            else (MetricProvenance.MEASURED, MetricSource.DEVICE)
+        )
+        for key in ("mean_power_mw", "peak_power_mw", "energy_per_inference_mj"):
+            overrides[key] = power_origin
+        return metric_meta(summary, provenance, source, overrides)
 
     def _build_monitor(self) -> "PowerMonitor | None":
         """Power monitoring is opt-in: ``tinyml.power: {kind: sim, ...}``."""

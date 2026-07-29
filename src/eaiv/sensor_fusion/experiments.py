@@ -6,6 +6,7 @@ import csv
 import math
 from pathlib import Path
 
+from eaiv.core.metrics import dataset_provenance, metric_meta
 from eaiv.core.results import SuiteResult
 from eaiv.sensor_fusion.fusion import build_filter
 
@@ -61,16 +62,22 @@ class FusionExperiment:
             metrics["approx_sample_period_ms"] = round(sample_dt * 1000, 3)
 
         # Pass criterion: filter ran to completion and (if a reference was
-        # available) stayed under a generous RMSE bound. Tune per project.
+        # available) stayed under the configured RMSE bound
+        # (``sensor_fusion.max_rmse_deg``; the historical default is 10°).
+        max_rmse = float(self.spec.get("max_rmse_deg", 10.0))
         passed = True
         if "roll_rmse_deg" in metrics:
-            passed = metrics["roll_rmse_deg"] < 10.0 and metrics["pitch_rmse_deg"] < 10.0
+            passed = metrics["roll_rmse_deg"] < max_rmse and metrics["pitch_rmse_deg"] < max_rmse
+            metrics["max_rmse_deg"] = max_rmse
 
+        all_metrics = {**metrics, "algorithm": algorithm, "samples": len(rows)}
+        provenance, origin = dataset_provenance(source)
         return SuiteResult(
             name="fusion",
             passed=passed,
-            metrics={**metrics, "algorithm": algorithm, "samples": len(rows)},
+            metrics=all_metrics,
             notes=f"{len(rows)} samples replayed through {algorithm} filter",
+            metric_meta=metric_meta(all_metrics, provenance, origin),
         )
 
     @staticmethod

@@ -17,6 +17,11 @@ class SuiteResult:
     passed: bool
     metrics: dict = field(default_factory=dict)
     notes: str = ""
+    #: Per-metric unit/direction/provenance, keyed by metric name. Built
+    #: with ``eaiv.core.metrics.metric_meta``. Optional: metrics without an
+    #: entry fall back to deterministic inference, so suites written before
+    #: provenance existed keep working unchanged.
+    metric_meta: dict = field(default_factory=dict)
 
     def __repr__(self) -> str:
         flag = "PASS" if self.passed else "FAIL"

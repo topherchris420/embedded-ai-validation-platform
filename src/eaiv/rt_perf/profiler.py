@@ -10,12 +10,16 @@ tests and local development without hardware attached.
 
 from __future__ import annotations
 
+import logging
 import random
 import re
 
+from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta, target_provenance
 from eaiv.core.results import SuiteResult
 from eaiv.rt_perf.latency import TaskTrace
 from eaiv.targets.base import Target
+
+log = logging.getLogger("eaiv.rt_perf")
 
 _LINE_RE = re.compile(
     r"TASK\s+(?P<name>\S+)\s+exec_us=(?P<exec_us>\d+)\s+jitter_us=(?P<jitter_us>\d+)"
@@ -26,6 +30,9 @@ class RTProfiler:
     def __init__(self, spec: dict, target: Target) -> None:
         self.spec = spec
         self.target = target
+        #: Set by :meth:`_collect`: True when no device trace was obtained
+        #: and the synthetic generator produced the numbers instead.
+        self.synthetic = False
 
     def run(self) -> SuiteResult:
         task_set = self.spec.get("task_set", [])
@@ -55,19 +62,37 @@ class RTProfiler:
             traces[name].execution_times_ms.append(int(m.group("exec_us")) / 1000.0)
             traces[name].release_jitter_ms.append(int(m.group("jitter_us")) / 1000.0)
 
-        metrics = {name: t.summary() for name, t in traces.items()}
+        metrics: dict = {name: t.summary() for name, t in traces.items()}
+        # Nested per-task summaries stay exactly as they were for existing
+        # consumers; flattened "<task>.<metric>" copies are added so the
+        # regression gate, the insight engine, and metric charts — all of
+        # which walk flat numeric metrics — can actually see deadline
+        # misses and WCET.
+        for name, trace in traces.items():
+            for key, value in trace.summary().items():
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    metrics[f"{name}.{key}"] = value
         passed = all(
             t.deadline_misses() == 0 and t.summary()["samples"] > 0 for t in traces.values()
         )
+
+        if self.synthetic:
+            provenance, source = MetricProvenance.SIMULATED, MetricSource.SIMULATOR
+            origin_note = " from a synthetic trace (no device timing available)"
+        else:
+            provenance, source = target_provenance(getattr(self.target, "spec", {}) or {})
+            origin_note = " from device task telemetry"
 
         return SuiteResult(
             name="rt_perf",
             passed=passed,
             metrics=metrics,
-            notes=f"profiled {len(traces)} task(s) over {duration_s:.0f}s",
+            notes=f"profiled {len(traces)} task(s) over {duration_s:.0f}s{origin_note}",
+            metric_meta=metric_meta(metrics, provenance, source),
         )
 
     def _collect(self, duration_s: float) -> str:
+        self.synthetic = False
         if self.target is not None:
             try:
                 self.target.run_command("RT_PROFILE_START")
@@ -76,7 +101,8 @@ class RTProfiler:
                 if output.strip():
                     return output
             except Exception:  # noqa: BLE001 - fall through to synthetic trace
-                pass
+                log.debug("device RT trace unavailable; using synthetic trace", exc_info=True)
+        self.synthetic = True
         return self._synthetic_trace(duration_s)
 
     def _synthetic_trace(self, duration_s: float) -> str:

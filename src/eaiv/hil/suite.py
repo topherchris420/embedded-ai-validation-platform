@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 from typing import Iterable
 
+from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta
 from eaiv.core.results import SuiteResult
 from eaiv.hil.faults import build_fault
 from eaiv.hil.replay import replay_csv
@@ -76,6 +77,9 @@ class HILExperiment:
             passed=passed,
             metrics=metrics,
             notes=f"{len(faults)} fault(s) injected into {source_path}",
+            # Faults are injected in software, so every number here
+            # describes simulated adversity, not a field failure.
+            metric_meta=metric_meta(metrics, MetricProvenance.SIMULATED, MetricSource.SIMULATOR),
         )
 
     @staticmethod

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta
 from eaiv.core.results import SuiteResult
 from eaiv.firmware.flasher import footprint_summary
 
@@ -73,4 +74,14 @@ class MemoryBenchmark:
 
         top = sorted(footprint["sections"].items(), key=lambda kv: kv[1], reverse=True)[:5]
         notes = "largest sections: " + ", ".join(f"{name}={size // 1024}KB" for name, size in top)
-        return SuiteResult(name="memory", passed=passed, metrics=metrics, notes=notes)
+        return SuiteResult(
+            name="memory",
+            passed=passed,
+            metrics=metrics,
+            notes=notes,
+            # Footprint numbers are read out of the ELF itself: a real
+            # measurement of the artifact, taken without running it.
+            metric_meta=metric_meta(
+                metrics, MetricProvenance.MEASURED, MetricSource.STATIC_ANALYSIS
+            ),
+        )
