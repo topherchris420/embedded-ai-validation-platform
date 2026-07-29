@@ -88,10 +88,21 @@ def render(workspace: Workspace) -> None:
             key="bl_run",
         )
         name = columns[1].text_input(
-            "Baseline name", value="", placeholder="release-0.4", key="bl_name"
+            "Baseline name",
+            value="",
+            placeholder="release-0.4",
+            key="bl_name",
+            help="Filename-safe; used with --baseline and in the gate.",
         )
         columns[2].markdown("<div style='height:1.8rem'></div>", unsafe_allow_html=True)
-        if columns[2].button("Promote", type="primary", disabled=not name, key="bl_promote"):
+        # The button stays enabled and validates on click. Disabling it on an
+        # empty name looks broken: Streamlit only commits a text input when it
+        # loses focus, so a user who typed a name would still see a greyed-out
+        # button until they clicked elsewhere.
+        if columns[2].button("Promote", type="primary", key="bl_promote"):
+            if not name.strip():
+                st.error("Give the baseline a name first.")
+                return
             source = next(s for s in passing if s.id == chosen_id)
             report = source.report()
             if report is None:

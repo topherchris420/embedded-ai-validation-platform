@@ -22,7 +22,10 @@ class JLinkTarget(Target):
 
             self._pylink = pylink
         except ImportError:
-            pass
+            # Optional dependency: absence is not an error here. Every method
+            # that needs it raises a precise message at use time (see
+            # _ensure_connected), and `eaiv doctor` reports it up front.
+            self._pylink = None
 
     def _ensure_connected(self) -> Any:
         if self._pylink is None:
