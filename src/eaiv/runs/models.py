@@ -21,7 +21,7 @@ import socket
 import subprocess
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -290,7 +290,7 @@ def git_info(cwd: str | Path | None = None) -> dict[str, Any]:
 
     def _git(*args: str) -> str | None:
         try:
-            proc = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            proc = subprocess.run(
                 ["git", *args],
                 cwd=root,
                 capture_output=True,
@@ -344,7 +344,7 @@ def eaiv_version() -> str:
 
 def new_run_id(prefix: str = "") -> str:
     """Sortable, filesystem-safe, collision-resistant run identifier."""
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     suffix = uuid.uuid4().hex[:6]
     clean = sanitize_component(prefix)
     return f"{stamp}-{clean}-{suffix}" if clean else f"{stamp}-{suffix}"

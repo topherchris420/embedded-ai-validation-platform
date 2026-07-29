@@ -19,7 +19,7 @@ import logging
 import threading
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -57,7 +57,7 @@ class EventLevel(StrEnum):
 
 def utcnow() -> str:
     """Timestamp string used across manifests, events, and reports."""
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 @dataclass(frozen=True)
@@ -125,7 +125,7 @@ class EventSink(Protocol):
 class NullEventSink:
     """Drops everything — the default for callers that don't observe."""
 
-    def emit(self, event: PipelineEvent) -> None:  # noqa: D102
+    def emit(self, event: PipelineEvent) -> None:
         return None
 
 
@@ -161,7 +161,7 @@ class CallbackEventSink:
     def emit(self, event: PipelineEvent) -> None:
         try:
             self.callback(event)
-        except Exception:  # noqa: BLE001 - observer errors must not abort a run
+        except Exception:
             log.exception("event callback failed for %s", event.kind)
 
 
@@ -208,7 +208,7 @@ class CompositeEventSink:
         for sink in self.sinks:
             try:
                 sink.emit(event)
-            except Exception:  # noqa: BLE001 - one bad sink must not block others
+            except Exception:
                 log.exception("event sink %r failed", sink)
 
 

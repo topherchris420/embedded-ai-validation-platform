@@ -89,7 +89,9 @@ class RunSession:
     def _default_token(self) -> CancellationToken:
         if self.store is None:
             return CancellationToken()
-        return CancellationToken(watch_file=self.store.run_dir(self.manifest.run_id) / "cancel.request")
+        return CancellationToken(
+            watch_file=self.store.run_dir(self.manifest.run_id) / "cancel.request"
+        )
 
     @property
     def run_dir(self) -> Path | None:
@@ -274,7 +276,9 @@ class RunSession:
             self.manifest.failure = failure
         if status is RunStatus.CANCELLED:
             self.manifest.cancel_reason = self.manifest.cancel_reason or self.cancel.reason
-            self.emit(EventKind.RUN_CANCELLED, self.manifest.cancel_reason, level=EventLevel.WARNING)
+            self.emit(
+                EventKind.RUN_CANCELLED, self.manifest.cancel_reason, level=EventLevel.WARNING
+            )
         elif status in (RunStatus.FAILED, RunStatus.ERROR, RunStatus.INTERRUPTED):
             message = failure.message if failure else "validation failed"
             self.emit(EventKind.RUN_FAILED, message, level=EventLevel.ERROR)

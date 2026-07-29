@@ -26,9 +26,9 @@ from __future__ import annotations
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from collections.abc import Callable
 
 from eaiv.config import Config
 from eaiv.core.baseline import BaselineStore
@@ -116,6 +116,7 @@ class ValidationPipeline:
         session: RunSession | None = None,
         cancel: CancellationToken | None = None,
         config_path: str = "",
+        quiet: bool = False,
     ) -> None:
         self.cfg = cfg
         self.report_dir = Path(report_dir)
@@ -126,6 +127,9 @@ class ValidationPipeline:
         self.session = session
         self.cancel = cancel
         self.config_path = config_path
+        #: Suppress the per-run console table (the dashboard and the demo
+        #: render their own summaries; three rich tables bury theirs).
+        self.quiet = quiet
 
     # -- run ---------------------------------------------------------------
 
@@ -156,9 +160,7 @@ class ValidationPipeline:
         try:
             self._stage(result, session, "build", lambda: self._build(session, build_env))
             self._stage(result, session, "validate", lambda: self._validate(result, session, suite))
-            self._stage(
-                result, session, "telemetry", lambda: self._telemetry(session, telemetry_s)
-            )
+            self._stage(result, session, "telemetry", lambda: self._telemetry(session, telemetry_s))
             self._stage(
                 result,
                 session,
@@ -293,7 +295,7 @@ class ValidationPipeline:
             raise FileNotFoundError(f"Firmware directory not found: {self.firmware_dir}")
         session.progress("build", f"pio run -e {build_env}", env=build_env)
         try:
-            proc = subprocess.run(  # noqa: S603 - fixed argv, validated env name, no shell
+            proc = subprocess.run(
                 ["pio", "run", "-e", build_env],
                 cwd=self.firmware_dir,
                 capture_output=True,
@@ -321,6 +323,7 @@ class ValidationPipeline:
             report_dir=str(self.report_dir),
             session=session,
             mirror_dir=str(session.run_dir) if session.run_dir else None,
+            quiet=self.quiet,
         )
         result.results = orch.run(suite)
         passed = sum(1 for s in result.results if s.passed)

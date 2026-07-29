@@ -13,8 +13,10 @@ Domains are free-form but the conventional values are:
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import asdict, dataclass, field
+from itertools import pairwise
 from pathlib import Path
 
 SCHEMA_VERSION = 1
@@ -107,10 +109,8 @@ def validate_dataset(csv_path: str | Path, rate_tolerance: float = 0.05) -> list
         rows = 0
         for row in reader:
             rows += 1
-            try:
+            with contextlib.suppress(KeyError, ValueError):
                 timestamps.append(float(row["t_s"]))
-            except (KeyError, ValueError):
-                pass
 
     if "t_s" not in columns:
         problems.append(f"{csv_p}: missing required column 't_s'")
@@ -121,7 +121,7 @@ def validate_dataset(csv_path: str | Path, rate_tolerance: float = 0.05) -> list
         problems.append(f"{csv_p}: no data rows")
 
     if len(timestamps) >= 2:
-        if any(b <= a for a, b in zip(timestamps, timestamps[1:])):
+        if any(b <= a for a, b in pairwise(timestamps)):
             problems.append(f"{csv_p}: timestamps are not strictly monotonic")
         observed = (len(timestamps) - 1) / (timestamps[-1] - timestamps[0])
         declared = meta.sampling_rate_hz

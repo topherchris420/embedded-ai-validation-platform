@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-
-from typing import TYPE_CHECKING
 
 from eaiv.core.results import SuiteResult
 from eaiv.targets.base import Target
@@ -139,7 +137,7 @@ class TinyMLBenchmark:
             overrides[key] = power_origin
         return metric_meta(summary, provenance, source, overrides)
 
-    def _build_monitor(self) -> "PowerMonitor | None":
+    def _build_monitor(self) -> PowerMonitor | None:
         """Power monitoring is opt-in: ``tinyml.power: {kind: sim, ...}``."""
         power_spec = self.spec.get("power")
         if not power_spec:

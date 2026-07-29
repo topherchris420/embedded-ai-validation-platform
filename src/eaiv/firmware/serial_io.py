@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import time
-from typing import Callable, Iterable, Optional
+from collections.abc import Callable, Iterable
 
 
 def wait_for(
@@ -12,7 +12,7 @@ def wait_for(
     patterns: Iterable[str],
     timeout_s: float,
     poll_interval_s: float = 0.2,
-) -> Optional[re.Match]:
+) -> re.Match | None:
     """Poll `stream_reader(poll_interval_s)` until any pattern matches or
     the overall timeout elapses. Returns the match object, or None."""
     end = time.time() + timeout_s

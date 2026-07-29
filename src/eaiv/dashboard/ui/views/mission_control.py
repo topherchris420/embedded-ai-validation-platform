@@ -16,7 +16,7 @@ import streamlit as st
 
 from eaiv.dashboard.runs import all_sources, recent_activity
 from eaiv.dashboard.ui import components as ui
-from eaiv.dashboard.ui.state import Workspace, goto, load_report
+from eaiv.dashboard.ui.state import Workspace, goto
 from eaiv.dashboard.ui.theme import chip, status_tone
 from eaiv.insights import decide, generate_insights
 from eaiv.runs.models import RunManifest, RunStatus
@@ -217,12 +217,20 @@ def render(workspace: Workspace) -> None:
     with columns[1]:
         ui.tile(
             "Target",
-            (latest_manifest.target_label if latest_manifest else (latest_source.target if latest_source else "—")),
+            (
+                latest_manifest.target_label
+                if latest_manifest
+                else (latest_source.target if latest_source else "—")
+            ),
             (report or {}).get("meta", {}).get("target", {}).get("arch", "") or "",
         )
     with columns[2]:
         rate = f"{passed_suites}/{total_suites}" if total_suites else "—"
-        ui.tile("Suites passed", rate, f"{(passed_suites / total_suites):.0%} pass rate" if total_suites else "")
+        ui.tile(
+            "Suites passed",
+            rate,
+            f"{(passed_suites / total_suites):.0%} pass rate" if total_suites else "",
+        )
 
     columns = st.columns(3)
     with columns[0]:
@@ -232,7 +240,11 @@ def render(workspace: Workspace) -> None:
             (
                 f"worst: {worst['suite']}.{worst['metric']} {worst['change_pct']:+.1f}%"
                 if worst
-                else "vs baseline" if latest_manifest and latest_manifest.baseline else "no baseline gate"
+                else (
+                    "vs baseline"
+                    if latest_manifest and latest_manifest.baseline
+                    else "no baseline gate"
+                )
             ),
         )
     with columns[1]:
@@ -289,9 +301,7 @@ def render(workspace: Workspace) -> None:
             )
         st.markdown(
             "Status glyphs: "
-            + " ".join(
-                chip(status_tone(s)) for s in ("passed", "failed", "cancelled", "running")
-            ),
+            + " ".join(chip(status_tone(s)) for s in ("passed", "failed", "cancelled", "running")),
             unsafe_allow_html=True,
         )
 

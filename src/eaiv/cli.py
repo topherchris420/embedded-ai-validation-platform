@@ -81,12 +81,11 @@ def _load_all_plugins() -> None:
     dashboard's inventory all answer "what can this installation do?", and
     that answer must not depend on which import ran first.
     """
-    import eaiv.hil  # noqa: F401  (fault + sim-target plugins)
-    import eaiv.power  # noqa: F401  (power_monitor plugins)
-    import eaiv.sensor_fusion.fusion  # noqa: F401  (fusion_filter plugins)
-    import eaiv.targets  # noqa: F401  (target plugins)
+    import eaiv.hil
+    import eaiv.power
+    import eaiv.sensor_fusion.fusion
+    import eaiv.targets
     import eaiv.telemetry  # noqa: F401  (telemetry_adapter plugins)
-
     from eaiv.plugins import load_entry_point_plugins
 
     load_entry_point_plugins()
@@ -429,9 +428,7 @@ def runs_list(report_dir: str, limit: int, as_json: bool) -> None:
     click.echo(f"{'RUN ID':<44} {'STATUS':<12} {'TARGET':<10} {'SUITES':<8} NAME")
     for m in manifests:
         suites = f"{m.summary.passed_suites}/{m.summary.total_suites}"
-        click.echo(
-            f"{m.run_id:<44} {str(m.status):<12} {m.target_label:<10} {suites:<8} {m.name}"
-        )
+        click.echo(f"{m.run_id:<44} {m.status!s:<12} {m.target_label:<10} {suites:<8} {m.name}")
 
 
 @runs.command("show")
@@ -464,11 +461,13 @@ def runs_show(run_id: str, report_dir: str, logs: bool, as_json: bool) -> None:
     click.echo(f"provenance {manifest.provenance}")
     if manifest.git.get("short_commit"):
         dirty = " (dirty)" if manifest.git.get("dirty") else ""
-        click.echo(f"git        {manifest.git['short_commit']} on {manifest.git.get('branch')}{dirty}")
+        click.echo(
+            f"git        {manifest.git['short_commit']} on {manifest.git.get('branch')}{dirty}"
+        )
     click.echo("")
     for stage in manifest.stages:
         click.echo(
-            f"[{str(stage.status):>9}] {stage.name:<14} {stage.duration_s:>8.3f}s  {stage.detail}"
+            f"[{stage.status!s:>9}] {stage.name:<14} {stage.duration_s:>8.3f}s  {stage.detail}"
         )
     if manifest.artifacts:
         click.echo("\nartifacts:")
@@ -485,7 +484,7 @@ def runs_show(run_id: str, report_dir: str, logs: bool, as_json: bool) -> None:
         decision = decide(report, insights)
         click.echo(f"\nverdict: {decision.verdict.short} — {decision.headline}")
         for insight in insights[:5]:
-            click.echo(f"  [{str(insight.severity):>13}] {insight.title}")
+            click.echo(f"  [{insight.severity!s:>13}] {insight.title}")
             if insight.action is not None:
                 click.echo(f"       -> {insight.action.summary}")
 
@@ -515,14 +514,17 @@ def runs_compare(
 
     store = RunStore(report_dir)
 
-    def _load(run_id: str) -> dict:
+    def _load(run_id: str) -> dict[str, object]:
         path = store.run_dir(run_id) / "report.json"
         if not path.exists():
             raise click.ClickException(f"Run {run_id!r} has no report.json (did it finish?)")
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
             raise click.ClickException(f"Run {run_id!r} has an unreadable report: {e}") from None
+        if not isinstance(payload, dict):
+            raise click.ClickException(f"Run {run_id!r} report is not a JSON object")
+        return payload
 
     comparison = compare_runs(
         _load(baseline_run),
@@ -597,9 +599,7 @@ def config_validate(config_path: str, suite: str, no_paths: bool, as_json: bool)
 
     for issue in result.issues:
         click.echo(str(issue))
-    click.echo(
-        f"{config_path}: {len(result.errors)} error(s), {len(result.warnings)} warning(s)"
-    )
+    click.echo(f"{config_path}: {len(result.errors)} error(s), {len(result.warnings)} warning(s)")
     sys.exit(0 if result.ok else 1)
 
 
@@ -660,7 +660,9 @@ def config_presets(as_json: bool) -> None:
 
 
 @main.command()
-@click.option("--config", "config_path", default=None, type=click.Path(), help="Also validate this config.")
+@click.option(
+    "--config", "config_path", default=None, type=click.Path(), help="Also validate this config."
+)
 @click.option("--report-dir", default="reports", type=click.Path())
 @click.option("--dataset-dir", default="datasets", type=click.Path())
 @click.option("--no-hardware", is_flag=True, help="Skip probes that enumerate hardware.")
@@ -739,8 +741,14 @@ def demo(report_dir: str, baseline_dir: str, dataset_dir: str, mission_dir: str)
     if result.mission_path:
         click.echo(f"mission saved:  {result.mission_path}")
     click.echo(f"reports:        {Path(report_dir) / 'runs'}")
-    click.echo("\nEvery metric above is simulated — none of it was measured on hardware.")
+    click.echo(
+        "\nThe third run fails on purpose: its sensor stream is degraded until the fusion "
+        "filter genuinely leaves its error envelope, so there is a real failure to diagnose."
+    )
+    click.echo("Every metric above is simulated — none of it was measured on hardware.")
     click.echo("Next: eaiv dashboard      (or: eaiv runs list)")
+    # Exit 0 means "the demo ran as designed" — this is a demonstration,
+    # not a release gate, so the intentional third failure is a success.
     sys.exit(0 if result.ok else 1)
 
 
@@ -785,9 +793,7 @@ def dashboard(
             # Streamlit's default accent is red, which on a validation
             # console reads as "failure". Set the instrument accent so the
             # theme matches regardless of the working directory.
-            "STREAMLIT_THEME_PRIMARY_COLOR": env.get(
-                "STREAMLIT_THEME_PRIMARY_COLOR", "#2f6f9f"
-            ),
+            "STREAMLIT_THEME_PRIMARY_COLOR": env.get("STREAMLIT_THEME_PRIMARY_COLOR", "#2f6f9f"),
             "STREAMLIT_BROWSER_GATHER_USAGE_STATS": env.get(
                 "STREAMLIT_BROWSER_GATHER_USAGE_STATS", "false"
             ),
@@ -809,7 +815,7 @@ def dashboard(
     click.echo(f"Starting EAIV Mission Control on http://{address}:{port}")
     try:
         # Fixed argv built from validated options; no shell involved.
-        completed = subprocess.run(argv, env=env, check=False)  # noqa: S603
+        completed = subprocess.run(argv, env=env, check=False)
     except KeyboardInterrupt:  # pragma: no cover - interactive
         sys.exit(0)
     sys.exit(completed.returncode)

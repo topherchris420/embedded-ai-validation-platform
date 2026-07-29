@@ -374,11 +374,8 @@ def _regression_insights(
                     f"{delta.suite}.{delta.metric} {direction} "
                     f"{abs(delta.change_pct):.1f}%{against}"
                 ),
-                impact=(
-                    (info.description + " ")
-                    if info.description
-                    else ""
-                ) + f"This metric is {info.direction_label}, so the change is a regression.",
+                impact=((info.description + " ") if info.description else "")
+                + f"This metric is {info.direction_label}, so the change is a regression.",
                 evidence=(
                     Evidence("Baseline", format_value(delta.baseline, info)),
                     Evidence("This run", format_value(delta.current, info)),
@@ -389,9 +386,7 @@ def _regression_insights(
                         "Compare the two runs metric by metric, then bisect the change that "
                         "introduced it."
                     ),
-                    command=(
-                        f"eaiv runs compare {baseline_name or '<baseline-id>'} <this-run-id>"
-                    ),
+                    command=(f"eaiv runs compare {baseline_name or '<baseline-id>'} <this-run-id>"),
                 ),
                 suite=delta.suite,
                 metrics=(delta.metric,),
@@ -580,7 +575,9 @@ def _suite_failure_insights(report: dict[str, Any]) -> list[ValidationInsight]:
             ValidationInsight(
                 id=f"suite-failed-{name}",
                 severity=Severity.HIGH,
-                category=InsightCategory.ACCURACY if name != "firmware" else InsightCategory.EXECUTION,
+                category=(
+                    InsightCategory.ACCURACY if name != "firmware" else InsightCategory.EXECUTION
+                ),
                 title=f"The {name} suite failed",
                 impact="This suite is part of the release gate, so the build is not shippable.",
                 evidence=tuple(evidence),
@@ -702,7 +699,9 @@ def _provenance_insights(report: dict[str, Any]) -> list[ValidationInsight]:
                     "produced by a simulation. Treat cross-run comparisons with care."
                 ),
                 evidence=(Evidence("Report schema", str(report.get("schema_version", 1))),),
-                action=RecommendedAction(summary="Re-run to get a report with provenance recorded."),
+                action=RecommendedAction(
+                    summary="Re-run to get a report with provenance recorded."
+                ),
                 confidence=Confidence.MEASURED,
                 provenance=provenance,
             )
@@ -735,7 +734,9 @@ def _provenance_insights(report: dict[str, Any]) -> list[ValidationInsight]:
             evidence=(
                 Evidence("Overall provenance", provenance),
                 Evidence("Non-hardware metrics", detail or "none"),
-                Evidence("Target", str((report.get("meta") or {}).get("target", {}).get("kind", "?"))),
+                Evidence(
+                    "Target", str((report.get("meta") or {}).get("target", {}).get("kind", "?"))
+                ),
             ),
             action=RecommendedAction(
                 summary="Re-run against a physical target before making a shipping decision.",

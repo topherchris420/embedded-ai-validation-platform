@@ -151,9 +151,7 @@ def render(workspace: Workspace) -> None:
                 icon=None,
             )
             return
-        chosen = st.selectbox(
-            "Capture", candidates, format_func=lambda p: str(p), key="tl_file"
-        )
+        chosen = st.selectbox("Capture", candidates, format_func=lambda p: str(p), key="tl_file")
         path = Path(chosen)
         try:
             frame = pd.read_csv(path)
@@ -206,11 +204,11 @@ def render(workspace: Workspace) -> None:
                         {
                             "At (s)": f"{start:.4f}",
                             "Gap (s)": f"{length:.4f}",
-                            "Missing samples (est.)": max(
-                                0, int(round(length / sampling.median_interval_s)) - 1
-                            )
-                            if sampling.median_interval_s
-                            else 0,
+                            "Missing samples (est.)": (
+                                max(0, round(length / sampling.median_interval_s) - 1)
+                                if sampling.median_interval_s
+                                else 0
+                            ),
                         }
                         for start, length in sampling.gaps[:50]
                     ]
@@ -230,9 +228,7 @@ def render(workspace: Workspace) -> None:
     if x_axis and len(frame) > 1:
         t_min, t_max = float(frame["t_s"].min()), float(frame["t_s"].max())
         if t_max > t_min:
-            window = st.slider(
-                "Time range (s)", t_min, t_max, (t_min, t_max), key="tl_range"
-            )
+            window = st.slider("Time range (s)", t_min, t_max, (t_min, t_max), key="tl_range")
             frame = frame[(frame["t_s"] >= window[0]) & (frame["t_s"] <= window[1])]
 
     for title in selected_groups:
@@ -252,9 +248,7 @@ def render(workspace: Workspace) -> None:
             "Outliers are flagged with a modified Z score above 3.5 (median-based, so a few "
             "extreme samples cannot hide behind their own effect on the mean)."
         )
-        inspect = st.selectbox(
-            "Inspect outliers in", [s.name for s in flagged], key="tl_outlier"
-        )
+        inspect = st.selectbox("Inspect outliers in", [s.name for s in flagged], key="tl_outlier")
         target = next(s for s in flagged if s.name == inspect)
         indices = target.outlier_indices[:200]
         st.dataframe(

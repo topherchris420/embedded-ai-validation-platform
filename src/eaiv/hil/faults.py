@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from typing import Callable
+from collections.abc import Callable
 
 from eaiv.plugins import get_registry, register_plugin
 

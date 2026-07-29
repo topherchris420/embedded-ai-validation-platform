@@ -19,8 +19,8 @@ boot ROM output with protocol traffic.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Iterator, Union
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,7 @@ class VerdictRecord:
     reason: str = ""
 
 
-Record = Union[BootRecord, TelemetryRecord, BenchRecord, StatRecord, VerdictRecord]
+Record = BootRecord | TelemetryRecord | BenchRecord | StatRecord | VerdictRecord
 
 
 def _parse_kv(tokens: list[str]) -> dict[str, str]:

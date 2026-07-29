@@ -42,7 +42,8 @@ def _config() -> dict[str, Any]:
     if _STATE_KEY not in st.session_state:
         preset = get_preset(st.session_state.get(_PRESET_KEY, "sim-release-gate"))
         st.session_state[_STATE_KEY] = preset.build()
-    return st.session_state[_STATE_KEY]
+    config: dict[str, Any] = st.session_state[_STATE_KEY]
+    return config
 
 
 def _apply_preset(preset_id: str) -> None:
@@ -98,10 +99,7 @@ def _widget(section: str, spec: FieldSpec, config: dict[str, Any]) -> None:
                 format="%g",
             )
         )
-    elif spec.type is FieldType.LIST:
-        st.caption(f"{label} — edit in the YAML review step below.")
-        return
-    elif spec.type is FieldType.MAPPING:
+    elif spec.type is FieldType.LIST or spec.type is FieldType.MAPPING:
         st.caption(f"{label} — edit in the YAML review step below.")
         return
     else:
@@ -268,7 +266,9 @@ def _task_editor(config: dict[str, Any]) -> None:
     columns = st.columns([2, 1, 1, 1, 1])
     name = columns[0].text_input("Task name", value="control_loop", key="task_name")
     period = columns[1].number_input("Period ms", value=5.0, min_value=0.001, key="task_period")
-    deadline = columns[2].number_input("Deadline ms", value=5.0, min_value=0.001, key="task_deadline")
+    deadline = columns[2].number_input(
+        "Deadline ms", value=5.0, min_value=0.001, key="task_deadline"
+    )
     budget = columns[3].number_input("WCET ms", value=4.0, min_value=0.001, key="task_wcet")
     if columns[4].button("Add task", key="task_add") and name:
         tasks.append(

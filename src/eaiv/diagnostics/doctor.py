@@ -124,7 +124,7 @@ def _probe(executable: str, *args: str) -> tuple[bool, str]:
     if path is None:
         return False, ""
     try:
-        proc = subprocess.run(  # noqa: S603 - fixed argv from the caller, no shell
+        proc = subprocess.run(
             [path, *args],
             capture_output=True,
             text=True,
@@ -239,7 +239,7 @@ def check_qemu() -> Check:
 
 def check_jlink() -> Check:
     for binary in ("JLinkExe", "JLink"):
-        found, detail = _probe(binary, "-CommanderScript", os.devnull)
+        found, _ = _probe(binary, "-CommanderScript", os.devnull)
         if found:
             return Check("J-Link tooling", CheckStatus.OK, f"{binary} found", category="toolchain")
     if _module_available("pylink"):
@@ -350,8 +350,9 @@ def check_report_dir(report_dir: str | Path = "reports") -> Check:
             fix=f"Create it or choose another: eaiv run --report-dir <path> (current: {directory})",
             category="storage",
         )
-    return Check("Report directory", CheckStatus.OK, f"{directory.resolve()} is writable",
-                 category="storage")
+    return Check(
+        "Report directory", CheckStatus.OK, f"{directory.resolve()} is writable", category="storage"
+    )
 
 
 def check_config(config_path: str | Path) -> list[Check]:

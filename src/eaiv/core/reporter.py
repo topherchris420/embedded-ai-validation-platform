@@ -17,7 +17,7 @@ import csv
 import html
 import json
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -71,7 +71,7 @@ class Reporter:
         releases. ``mirror_dir`` additionally writes the same four
         artifacts into a run directory under stable names.
         """
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         payload = self._payload(results, metadata, run, timestamp)
         normalized = normalize_report(payload)
 
@@ -195,10 +195,18 @@ class Reporter:
             if not metrics:
                 continue
             name = str(s.get("name"))
-            lines += ["", f"## {name}", "", "| Metric | Value | Origin |", "|--------|-------|--------|"]
+            lines += [
+                "",
+                f"## {name}",
+                "",
+                "| Metric | Value | Origin |",
+                "|--------|-------|--------|",
+            ]
             for key, value in metrics.items():
                 info = metric_info(report, name, key)
-                origin = "—" if info.provenance is MetricProvenance.UNKNOWN else info.provenance.label
+                origin = (
+                    "—" if info.provenance is MetricProvenance.UNKNOWN else info.provenance.label
+                )
                 lines.append(f"| {key} | {format_value(value, info)} | {origin} |")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")

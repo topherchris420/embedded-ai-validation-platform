@@ -31,7 +31,7 @@ import logging
 import os
 import shutil
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +45,13 @@ from eaiv.runs.models import (
 
 log = logging.getLogger("eaiv.runs")
 
+#: ``RunStore.list`` shadows the ``list`` builtin inside the class body, so
+#: later annotations in that body cannot spell ``list[...]`` directly.
+#: Naming the collection types once keeps the API readable.
+Manifests = list[RunManifest]
+RunIds = list[str]
+Events = list[PipelineEvent]
+
 MANIFEST_NAME = "manifest.json"
 EVENTS_NAME = "events.jsonl"
 
@@ -57,7 +64,9 @@ def atomic_write_text(path: str | Path, text: str, encoding: str = "utf-8") -> P
     """Write ``text`` to ``path`` atomically within the same directory."""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp")
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(target.parent), prefix=f".{target.name}.", suffix=".tmp"
+    )
     tmp = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding=encoding) as handle:
@@ -100,8 +109,8 @@ def _age_seconds(timestamp: str) -> float:
     except ValueError:
         return float("inf")
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - parsed).total_seconds()
+        parsed = parsed.replace(tzinfo=UTC)
+    return (datetime.now(UTC) - parsed).total_seconds()
 
 
 class RunStore:
@@ -168,11 +177,11 @@ class RunStore:
         except ValueError:
             return False
 
-    def list(self, limit: int | None = None, reconcile: bool = True) -> list[RunManifest]:
+    def list(self, limit: int | None = None, reconcile: bool = True) -> Manifests:
         """All runs, newest first. Unreadable manifests are skipped."""
         if not self.runs_root.exists():
             return []
-        manifests: list[RunManifest] = []
+        manifests: Manifests = []
         for directory in sorted(self.runs_root.iterdir(), reverse=True):
             if not directory.is_dir() or not (directory / MANIFEST_NAME).exists():
                 continue
@@ -199,7 +208,7 @@ class RunStore:
 
     # -- events ------------------------------------------------------------
 
-    def events(self, run_id: str, after_seq: int = 0) -> list[PipelineEvent]:
+    def events(self, run_id: str, after_seq: int = 0) -> Events:
         return read_events(self.events_path(run_id), after_seq=after_seq)
 
     # -- cancellation ------------------------------------------------------
@@ -226,7 +235,7 @@ class RunStore:
         age = _age_seconds(manifest.heartbeat)
         if age < stale_after_s:
             return False
-        if age > stale_after_s * 12 and not manifest.status == RunStatus.PENDING:
+        if age > stale_after_s * 12 and manifest.status is not RunStatus.PENDING:
             return True
         return not _process_alive(manifest.pid)
 
@@ -266,9 +275,9 @@ class RunStore:
             log.warning("could not persist reconciled manifest for %s", manifest.run_id)
         return manifest
 
-    def reconcile_all(self, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> list[str]:
+    def reconcile_all(self, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> RunIds:
         """Mark every abandoned run as interrupted; return the affected IDs."""
-        changed: list[str] = []
+        changed: RunIds = []
         for manifest in self.list(reconcile=False):
             if manifest.status not in (RunStatus.RUNNING, RunStatus.PENDING):
                 continue

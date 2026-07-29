@@ -212,6 +212,7 @@ def render(workspace: Workspace) -> None:
             ("New", "added"),
             ("Missing", "removed"),
         ],
+        strict=False,
     ):
         with column:
             ui.tile(label, str(counts[key]))
@@ -229,9 +230,13 @@ def render(workspace: Workspace) -> None:
     )
     for suite, items in comparison.by_suite().items():
         if sort_choice == "Largest regression":
-            items = sorted(items, key=lambda c: (c.change_pct or 0) * (-c.info.direction or 1), reverse=True)
+            items = sorted(
+                items, key=lambda c: (c.change_pct or 0) * (-c.info.direction or 1), reverse=True
+            )
         elif sort_choice == "Largest improvement":
-            items = sorted(items, key=lambda c: (c.change_pct or 0) * (c.info.direction or 1), reverse=True)
+            items = sorted(
+                items, key=lambda c: (c.change_pct or 0) * (c.info.direction or 1), reverse=True
+            )
         else:
             items = sorted(items, key=lambda c: c.metric)
         with st.expander(f"{suite} ({len(items)} metrics)", expanded=suite in {"tinyml", "hil"}):

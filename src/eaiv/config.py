@@ -46,7 +46,7 @@ class Config:
 
     def to_yaml(self) -> str:
         """Serialize the resolved configuration back to valid YAML."""
-        return yaml.safe_dump(self.raw, sort_keys=False, default_flow_style=False)
+        return str(yaml.safe_dump(self.raw, sort_keys=False, default_flow_style=False))
 
 
 def _deep_merge(base: dict, overlay: dict) -> dict:

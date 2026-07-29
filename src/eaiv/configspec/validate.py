@@ -264,7 +264,7 @@ def _check_extra_suites(issues: list[ConfigIssue], extra: Any) -> None:
         return
     available = plugin_choices("suite")
     for name, spec in extra.items():
-        if available and name not in available:
+        if name not in available:
             issues.append(
                 ConfigIssue(
                     f"extra_suites.{name}",
@@ -272,7 +272,10 @@ def _check_extra_suites(issues: list[ConfigIssue], extra: Any) -> None:
                     hint=(
                         f"Registered suites: {', '.join(available)}"
                         if available
-                        else "Install the plugin package that provides it."
+                        else (
+                            "No suite plugins are installed. Install the package that provides "
+                            "it, or remove the entry."
+                        )
                     ),
                 )
             )
@@ -360,7 +363,9 @@ def validate_config(
     return ValidationResult(issues)
 
 
-def validate_for_suite(raw: dict[str, Any], suite: str, check_paths: bool = True) -> ValidationResult:
+def validate_for_suite(
+    raw: dict[str, Any], suite: str, check_paths: bool = True
+) -> ValidationResult:
     """Validate only what the selected suite actually needs.
 
     Running just the fusion suite should not complain about a missing

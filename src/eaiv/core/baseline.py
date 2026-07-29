@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from eaiv.core.regression import load_report
@@ -50,7 +50,7 @@ class BaselineStore:
             raise ValueError("Not a report payload: missing 'suites'")
         payload["_baseline"] = {
             "name": name,
-            "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "saved_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         path = self.path(name)
         path.parent.mkdir(parents=True, exist_ok=True)

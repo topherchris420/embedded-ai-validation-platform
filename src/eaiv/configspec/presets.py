@@ -11,7 +11,7 @@ on a laptop with nothing plugged in.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -250,6 +250,11 @@ class MissionInfo:
     saved_at: str
 
 
+#: ``MissionStore.list`` shadows the ``list`` builtin inside the class
+#: body; naming the collection type keeps later annotations spellable.
+Missions = list[MissionInfo]
+
+
 class MissionStore:
     """Saved missions: a config file plus the intent that produced it.
 
@@ -290,7 +295,7 @@ class MissionStore:
             "baseline": baseline,
             "telemetry_s": telemetry_s,
             "max_regression_pct": max_regression_pct,
-            "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "saved_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         path = self.path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -306,10 +311,10 @@ class MissionStore:
             raise ValueError(f"Mission {path} is not a mapping")
         return data
 
-    def list(self) -> list[MissionInfo]:
+    def list(self) -> Missions:
         if not self.root.exists():
             return []
-        infos: list[MissionInfo] = []
+        infos: Missions = []
         for path in sorted(self.root.glob("*.yaml")):
             try:
                 data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -336,7 +341,7 @@ class MissionStore:
     def delete(self, name: str) -> None:
         self.path(name).unlink(missing_ok=True)
 
-    def using_baseline(self, baseline: str) -> list[MissionInfo]:
+    def using_baseline(self, baseline: str) -> Missions:
         """Saved missions gating against a given baseline."""
         return [m for m in self.list() if m.baseline == baseline]
 

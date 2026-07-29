@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import math
 import statistics
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from itertools import pairwise
+from typing import Any
 
 #: Consecutive-sample interval this far above the median counts as a gap.
 GAP_FACTOR = 1.8
@@ -69,7 +71,7 @@ class SamplingReport:
         """How many samples the gaps most likely swallowed."""
         if self.median_interval_s <= 0:
             return 0
-        return sum(max(0, int(round(length / self.median_interval_s)) - 1) for _, length in self.gaps)
+        return sum(max(0, round(length / self.median_interval_s) - 1) for _, length in self.gaps)
 
     @property
     def rate_matches_declaration(self) -> bool | None:
@@ -94,7 +96,9 @@ class SamplingReport:
         return out
 
 
-def analyze_sampling(times: Sequence[float], declared_rate_hz: float | None = None) -> SamplingReport:
+def analyze_sampling(
+    times: Sequence[float], declared_rate_hz: float | None = None
+) -> SamplingReport:
     """Rate, jitter, gaps, and ordering problems in a timestamp column."""
     values = [float(t) for t in times]
     if len(values) < 2:
@@ -106,7 +110,7 @@ def analyze_sampling(times: Sequence[float], declared_rate_hz: float | None = No
             jitter_s=0.0,
             declared_rate_hz=declared_rate_hz,
         )
-    intervals = [b - a for a, b in zip(values, values[1:])]
+    intervals = [b - a for a, b in pairwise(values)]
     positive = [d for d in intervals if d > 0]
     median = statistics.median(positive) if positive else 0.0
     duration = values[-1] - values[0]
@@ -163,6 +167,11 @@ def analyze_signal(name: str, values: Sequence[float]) -> SignalStats:
     The modified Z score uses the median and the median absolute
     deviation, so a handful of extreme samples cannot hide themselves by
     inflating the mean and standard deviation they are measured against.
+
+    When the MAD is zero — a mostly-constant signal, which is exactly the
+    case where a single spike matters most — the score falls back to the
+    mean absolute deviation. Without that fallback a lone glitch in a
+    stationary channel would go unreported.
     """
     numbers = [float(v) for v in values if v is not None and not _is_nan(v)]
     if not numbers:
@@ -177,6 +186,14 @@ def analyze_signal(name: str, values: Sequence[float]) -> SignalStats:
             for index, value in enumerate(numbers)
             if abs(0.6745 * (value - median) / mad) > OUTLIER_Z
         ]
+    else:
+        mean_ad = statistics.fmean(deviations)
+        if mean_ad > 0:
+            outliers = [
+                index
+                for index, value in enumerate(numbers)
+                if abs(0.7979 * (value - median) / mean_ad) > OUTLIER_Z
+            ]
     return SignalStats(
         name=name,
         count=len(numbers),

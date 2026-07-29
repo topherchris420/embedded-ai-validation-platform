@@ -90,7 +90,7 @@ class RunLauncher:
                     run_name=spec.run_name,
                     trigger="dashboard",
                 )
-            except BaseException as exc:  # noqa: BLE001 - the worker owns the run's outcome
+            except BaseException as exc:
                 log.exception("run %s crashed", run_id)
                 session.finish(
                     RunStatus.ERROR,

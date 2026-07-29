@@ -8,11 +8,10 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
-  CARGO_TERM_COLOR: always
 
 jobs:
   lint:
-    name: Lint
+    name: Lint and types
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -34,6 +33,8 @@ jobs:
       - name: Check Black formatting
         run: black --check .
 
+      # Not strict mode: see [tool.mypy] in pyproject.toml for the exact
+      # flags (disallow_untyped_defs, check_untyped_defs, warn_return_any).
       - name: Check types (mypy)
         run: mypy src/eaiv
 
@@ -52,7 +53,7 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,dashboard]"
 
       - name: Run tests
         run: pytest tests/ -v --cov=src/eaiv --cov-report=xml
@@ -65,7 +66,7 @@ jobs:
         if: success()
 
   test-integration:
-    name: Integration Tests
+    name: Integration checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -79,10 +80,23 @@ jobs:
       - name: Install package
         run: pip install -e .
 
-      - name: Run integration tests
+      - name: Public API imports
         run: |
           python -c "from eaiv import Orchestrator, load_config"
           python -c "from eaiv.targets import build_target"
+          python -c "from eaiv.runs import RunManifest, RunStore, RunSession"
+          python -c "from eaiv.insights import generate_insights, decide"
+          python -c "from eaiv.configspec import validate_config, PRESETS"
+
+      - name: Environment diagnosis
+        run: eaiv doctor --no-hardware
+
+      - name: Shipped configs and presets validate
+        run: |
+          eaiv config validate configs/sim.yaml
+          eaiv config validate configs/default.yaml
+          eaiv config validate configs/stm32h7.yaml
+          eaiv config presets
 
   docs:
     name: Docs
@@ -99,8 +113,81 @@ jobs:
       - name: Validate documentation links
         run: python ci/check_docs.py
 
-  benchmark-report:
-    name: Benchmark Report (simulated)
+  simulated-validation:
+    name: Simulated validation (no hardware)
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install package
+        run: pip install -e ".[dashboard]"
+
+      - name: Validate committed datasets
+        run: eaiv datasets validate datasets/
+
+      - name: Run all suites against the simulated target
+        run: eaiv run --config configs/sim.yaml --suite all --report-dir reports
+
+      - name: Run the recorded pipeline and promote a baseline
+        run: |
+          eaiv pipeline --config configs/sim.yaml --suite all \
+            --telemetry-duration 1 --save-baseline ci-baseline \
+            --report-dir reports --baseline-dir baselines --run-name "ci gate"
+
+      # The default 10% allowance is realistic here because mock-runtime
+      # timings are informational, not gating (see NON_GATING_PROVENANCE).
+      - name: Gate a second run against that baseline
+        run: |
+          eaiv pipeline --config configs/sim.yaml --suite all \
+            --baseline ci-baseline \
+            --report-dir reports --baseline-dir baselines --run-name "ci candidate"
+
+      - name: Inspect the recorded runs
+        run: |
+          eaiv runs list --report-dir reports
+          RUN_ID=$(eaiv runs list --report-dir reports --json \
+            | python -c 'import json,sys; print(json.load(sys.stdin)[0]["run_id"])')
+          eaiv runs show "$RUN_ID" --report-dir reports
+
+      # The dashboard's data layer is what the UI reads; confirming it can
+      # load this run's output is what keeps "the dashboard shows CI results"
+      # from silently becoming false.
+      - name: Verify the dashboard can load the output
+        run: |
+          python - <<'PY'
+          from eaiv.dashboard.runs import all_sources
+          from eaiv.insights import decide, generate_insights
+          from eaiv.runs import RunStore
+
+          store = RunStore("reports")
+          sources = all_sources(store, "reports")
+          assert sources, "the dashboard data layer found no artifacts"
+          for source in sources:
+              report = source.report()
+              assert report is not None, f"unreadable report: {source.label}"
+              insights = generate_insights(report, manifest=source.manifest)
+              decision = decide(report, insights)
+              print(f"{source.label}: {decision.verdict} ({len(insights)} findings)")
+          PY
+
+      - name: Publish report to job summary
+        run: cat reports/report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: reports/
+
+  demo:
+    name: Guided demo
     runs-on: ubuntu-latest
     needs: [test]
     steps:
@@ -115,32 +202,44 @@ jobs:
       - name: Install package
         run: pip install -e .
 
-      - name: Validate committed datasets
-        run: eaiv datasets validate datasets/
+      # `eaiv demo` is the first thing a new user runs; if it breaks, the
+      # onboarding path breaks with it.
+      - name: Run the guided demo
+        run: |
+          eaiv demo --report-dir demo-reports --baseline-dir demo-baselines \
+            --mission-dir demo-missions
 
-      - name: Run all suites against the simulated target
-        run: eaiv run --config configs/sim.yaml --suite all --report-dir reports
+      - name: Compare the demo runs
+        run: |
+          python - <<'PY'
+          import subprocess
+          from eaiv.runs import RunStore
 
-      - name: Publish report to job summary
-        run: cat reports/report.md >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload report artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: validation-report
-          path: reports/
+          runs = RunStore("demo-reports").list()
+          assert len(runs) == 3, runs
+          reference = next(r for r in runs if str(r.status) == "passed")
+          degraded = next(r for r in runs if str(r.status) == "failed")
+          proc = subprocess.run(
+              ["eaiv", "runs", "compare", reference.run_id, degraded.run_id,
+               "--report-dir", "demo-reports", "--format", "markdown"],
+              check=False, capture_output=True, text=True,
+          )
+          print(proc.stdout)
+          assert "Validation comparison" in proc.stdout
+          PY
 
   notify:
-    name: Notify
-    needs: [lint, test, test-integration, docs, benchmark-report]
+    name: Summary
+    needs: [lint, test, test-integration, docs, simulated-validation, demo]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Summary
         run: |
           echo "## CI Results" >> $GITHUB_STEP_SUMMARY
-          echo "- Lint: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint and types: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Test: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Integration: ${{ needs.test-integration.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Docs: ${{ needs.docs.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Benchmark report: ${{ needs.benchmark-report.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Simulated validation: ${{ needs.simulated-validation.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Guided demo: ${{ needs.demo.result }}" >> $GITHUB_STEP_SUMMARY

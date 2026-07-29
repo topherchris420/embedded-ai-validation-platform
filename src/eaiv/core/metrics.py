@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
 from eaiv.core.regression import metric_direction
@@ -105,6 +106,14 @@ class MetricInfo:
 
     @classmethod
     def from_dict(cls, name: str, payload: dict[str, Any]) -> MetricInfo:
+        """Build metadata from a declaration, inferring anything it omits.
+
+        A partial declaration is normal — a suite plugin may know a
+        metric's provenance without caring about its unit. Falling back to
+        inference per field means a partial declaration never *loses*
+        information that could be derived from the name.
+        """
+        inferred = infer_metric_info(name)
         try:
             provenance = MetricProvenance(str(payload.get("provenance", "unknown")))
         except ValueError:
@@ -114,16 +123,16 @@ class MetricInfo:
         except ValueError:
             source = MetricSource.UNKNOWN
         try:
-            direction = int(payload.get("direction", 0))
+            direction = int(payload["direction"]) if "direction" in payload else inferred.direction
         except (TypeError, ValueError):
-            direction = 0
+            direction = inferred.direction
         return cls(
             name=name,
-            unit=str(payload.get("unit", "")),
+            unit=str(payload.get("unit") or inferred.unit),
             direction=direction,
             provenance=provenance,
             source=source,
-            description=str(payload.get("description", "")),
+            description=str(payload.get("description") or inferred.description),
             inferred=False,
         )
 
@@ -276,12 +285,17 @@ def dataset_provenance(path: str | Path) -> tuple[MetricProvenance, MetricSource
 
 
 def format_value(value: Any, info: MetricInfo | None = None) -> str:
-    """Consistent metric rendering: fixed precision plus unit."""
+    """Consistent metric rendering: fixed precision plus unit.
+
+    Integers stay integers (a count of 7 deadline misses is not "7.000"),
+    while floats always keep decimals — including whole ones — so a column
+    of measurements lines up instead of mixing "10 ms" with "11.840 ms".
+    """
     if isinstance(value, bool):
         return "yes" if value else "no"
     if isinstance(value, (int, float)):
         magnitude = abs(float(value))
-        if isinstance(value, int) or float(value).is_integer():
+        if isinstance(value, int):
             text = f"{int(value):,}"
         elif magnitude >= 100:
             text = f"{value:,.1f}"

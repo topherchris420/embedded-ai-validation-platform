@@ -9,7 +9,8 @@ pages thin and the logic testable.
 from __future__ import annotations
 
 import html
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import streamlit as st
 
@@ -91,13 +92,9 @@ def insight_card(insight: ValidationInsight, index: int = 0) -> None:
         for e in insight.evidence
     )
     confidence_note = (
-        f'<span class="eaiv-chip muted">INFERRED</span> '
-        if insight.is_inferred
-        else ""
+        '<span class="eaiv-chip muted">INFERRED</span> ' if insight.is_inferred else ""
     )
-    provenance_chip = (
-        chip(provenance_tone(insight.provenance)) if insight.provenance else ""
-    )
+    provenance_chip = chip(provenance_tone(insight.provenance)) if insight.provenance else ""
     action_html = ""
     if insight.action is not None:
         parts = [f"<strong>Next:</strong> {esc(insight.action.summary)}"]
@@ -155,9 +152,7 @@ def metric_row(
         "Metric": name,
         "Value": format_value(value, info),
         "Direction": info.direction_label,
-        "Origin": (
-            "—" if info.provenance is MetricProvenance.UNKNOWN else info.provenance.label
-        ),
+        "Origin": ("—" if info.provenance is MetricProvenance.UNKNOWN else info.provenance.label),
     }
     if baseline is not None:
         row["Baseline"] = format_value(baseline, info)

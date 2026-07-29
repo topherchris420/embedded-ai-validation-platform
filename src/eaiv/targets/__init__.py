@@ -76,10 +76,10 @@ register_plugin(
 
 
 __all__ = [
+    "JLinkTarget",
+    "QEMUTarget",
+    "SerialTarget",
     "Target",
     "TargetInfo",
     "build_target",
-    "QEMUTarget",
-    "SerialTarget",
-    "JLinkTarget",
 ]

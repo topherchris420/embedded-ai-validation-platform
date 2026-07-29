@@ -218,9 +218,7 @@ class Orchestrator:
             "config": self.cfg.raw,
             "thresholds": self.thresholds(),
             "inputs": self._inputs(),
-            "plugins": {
-                f"{p.plugin_type}:{p.name}": p.version for p in registry.list_plugins()
-            },
+            "plugins": {f"{p.plugin_type}:{p.name}": p.version for p in registry.list_plugins()},
             "baseline": "",
         }
         if self.session is not None:

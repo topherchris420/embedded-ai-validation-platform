@@ -11,20 +11,21 @@ packages.
 
 from __future__ import annotations
 
+import logging
+import traceback
+
+import pandas as pd
 import streamlit as st
 
-# Keep string columns on the python backend: pyarrow-backed string arrays
-# have crashed natively when frames are built on Streamlit's script thread
-# (observed with pandas 3.x + pyarrow 25). Values here are tiny; the arrow
-# fast path buys nothing.
-try:
-    import pandas as pd
-
-    pd.set_option("mode.string_storage", "python")
-except (ImportError, AttributeError, Exception):  # noqa: B014 - pandas option APIs vary
-    pass
-
 from eaiv.dashboard.ui import theme
+from eaiv.dashboard.ui.state import (
+    DEFAULT_BASELINE_DIR,
+    DEFAULT_DATASET_DIR,
+    DEFAULT_MISSION_DIR,
+    DEFAULT_REPORT_DIR,
+    clear_caches,
+    workspace,
+)
 from eaiv.dashboard.ui.views import (
     baselines,
     compare,
@@ -35,14 +36,8 @@ from eaiv.dashboard.ui.views import (
     results,
     telemetry_lab,
 )
-from eaiv.dashboard.ui.state import (
-    DEFAULT_BASELINE_DIR,
-    DEFAULT_DATASET_DIR,
-    DEFAULT_MISSION_DIR,
-    DEFAULT_REPORT_DIR,
-    clear_caches,
-    workspace,
-)
+
+log = logging.getLogger("eaiv.dashboard")
 
 PAGES = {
     "Mission Control": mission_control.render,
@@ -54,6 +49,19 @@ PAGES = {
     "Baselines": baselines.render,
     "Hardware & plugins": inventory.render,
 }
+
+
+def _configure_pandas() -> None:
+    """Keep string columns on the python backend.
+
+    Pyarrow-backed string arrays have crashed natively when frames are
+    built on Streamlit's script thread (observed with pandas 3.x + pyarrow
+    25). The frames here are tiny, so the arrow fast path buys nothing.
+    """
+    try:
+        pd.set_option("mode.string_storage", "python")
+    except (pd.errors.OptionError, AttributeError, KeyError):
+        log.debug("pandas string_storage option unavailable; leaving the default")
 
 
 def _load_plugins() -> None:
@@ -105,6 +113,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     theme.inject()
+    _configure_pandas()
     _load_plugins()
     page = _sidebar()
     space = workspace()
@@ -113,8 +122,6 @@ def main() -> None:
     except Exception as exc:  # noqa: BLE001 - show the failure, keep the app usable
         st.error(f"{type(exc).__name__} while rendering {page}: {exc}")
         with st.expander("Details"):
-            import traceback
-
             st.code(traceback.format_exc(), language="text")
         st.caption("Run `eaiv doctor` for a full diagnosis of this installation.")
 

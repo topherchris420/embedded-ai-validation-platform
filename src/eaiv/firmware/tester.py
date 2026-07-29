@@ -24,7 +24,7 @@ class FirmwareTester:
         last_output = ""
         passed = False
         attempt = 0
-        for attempt in range(retries + 1):
+        for attempt in range(retries + 1):  # noqa: B007 - read after the loop
             try:
                 self.target.flash(binary)
                 self.target.reset()

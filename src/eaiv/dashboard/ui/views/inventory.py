@@ -154,7 +154,9 @@ def render(workspace: Workspace) -> None:
     with columns[0]:
         ui.tile("Checks", str(len(diagnosis.checks)))
     with columns[1]:
-        ui.tile("Failures", str(len(diagnosis.failures)), tone_css="fail" if diagnosis.failures else "")
+        ui.tile(
+            "Failures", str(len(diagnosis.failures)), tone_css="fail" if diagnosis.failures else ""
+        )
     with columns[2]:
         ui.tile("Warnings", str(len(diagnosis.warnings)))
     st.dataframe(

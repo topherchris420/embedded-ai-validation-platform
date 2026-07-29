@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from itertools import pairwise
+
 import pytest
 
+from eaiv.firmware.tester import FirmwareTester
 from eaiv.hil import (
     GaussianNoise,
     HILExperiment,
@@ -15,7 +18,6 @@ from eaiv.hil import (
     build_fault,
     synthetic_imu_stream,
 )
-from eaiv.firmware.tester import FirmwareTester
 from eaiv.targets import build_target
 
 
@@ -26,7 +28,7 @@ def _static_stream(n: int = 100, dt: float = 0.01):
 
 def test_noise_perturbs_only_selected_fields():
     fault = GaussianNoise(std=0.5, fields=["az"], seed=3)
-    t, values = fault.apply(0.0, {"ax": 0.0, "az": 1.0})
+    _t, values = fault.apply(0.0, {"ax": 0.0, "az": 1.0})
     assert values["ax"] == 0.0
     assert values["az"] != 1.0
 
@@ -46,7 +48,7 @@ def test_packet_loss_rejects_bad_probability():
 def test_timing_jitter_keeps_timestamps_monotonic():
     sim = Simulator(_static_stream(500, dt=0.001), [TimingJitter(std_s=0.005, seed=1)])
     times = [t for t, _ in sim.stream()]
-    assert all(b > a for a, b in zip(times, times[1:]))
+    assert all(b > a for a, b in pairwise(times))
 
 
 def test_outage_drops_window_only():

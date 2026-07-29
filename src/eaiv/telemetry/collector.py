@@ -12,7 +12,6 @@ import csv
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-
 from typing import TYPE_CHECKING
 
 from eaiv.plugins.targets import Target
@@ -55,7 +54,7 @@ class TelemetryCollector:
         """Read serial output from a target for a duration and ingest it."""
         self.feed(target.read_serial(duration_s))
 
-    def ingest(self, provider: "TelemetryProvider") -> None:
+    def ingest(self, provider: TelemetryProvider) -> None:
         """Consume every record from a telemetry provider (live, replay,
         or simulated — see ``eaiv.telemetry.provider``)."""
         self.records.extend(provider.records())

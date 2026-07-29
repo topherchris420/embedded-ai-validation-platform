@@ -33,7 +33,7 @@ def _pick_run(workspace: Workspace) -> str | None:
         running[0].run_id if running else manifests[0].run_id
     )
     ids = [m.run_id for m in manifests]
-    labels = {m.run_id: f"{m.display_name} · {str(m.status)} · {m.created_at[:19]}" for m in manifests}
+    labels = {m.run_id: f"{m.display_name} · {m.status!s} · {m.created_at[:19]}" for m in manifests}
     if default not in ids:
         default = ids[0]
     chosen = st.selectbox(
@@ -67,9 +67,10 @@ def _render_body(workspace: Workspace, run_id: str) -> None:
             elif st.button("Cancel run", key=f"cancel_{run_id}"):
                 launcher.cancel(run_id)
                 st.rerun()
-        elif manifest.status.is_terminal:
-            if st.button("Open results", type="primary", key=f"results_{run_id}"):
-                goto("Results", results_run_id=run_id)
+        elif manifest.status.is_terminal and st.button(
+            "Open results", type="primary", key=f"results_{run_id}"
+        ):
+            goto("Results", results_run_id=run_id)
     with columns[1]:
         if is_active and not launcher.is_live_here(run_id):
             st.caption("Started by another session — status is read from disk.")
@@ -95,8 +96,7 @@ def _render_body(workspace: Workspace, run_id: str) -> None:
     with left:
         st.subheader("Log")
         lines = [
-            f"{e.timestamp[11:23]}  {str(e.kind):<16} {e.stage or '-':<12} {e.message}"
-            for e in events
+            f"{e.timestamp[11:23]}  {e.kind!s:<16} {e.stage or '-':<12} {e.message}" for e in events
         ]
         ui.log_block(lines[-400:], "Waiting for the first event...")
 
@@ -177,13 +177,14 @@ def render(workspace: Workspace) -> None:
     workspace.runs.reconcile_all()
     run_id = _pick_run(workspace)
     if run_id is None:
-        ui.empty_state(
+        if ui.empty_state(
             "No runs to watch",
             "Start a mission and this page will show its stages, logs, and metrics as they "
             "arrive.",
             "New validation run",
             "live_new",
-        ) and goto("New run")
+        ):
+            goto("New run")
         return
 
     manifest = workspace.runs.load(run_id)

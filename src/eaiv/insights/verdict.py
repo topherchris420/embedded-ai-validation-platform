@@ -85,9 +85,7 @@ def decide(
         reasons.append(f"{len(blockers)} blocking issue(s): {blockers[0].title}")
         if failed:
             reasons.append(f"Failing suites: {', '.join(failed)}")
-        return ReleaseDecision(
-            Verdict.DO_NOT_SHIP, blockers[0].title, reasons, blockers, risks
-        )
+        return ReleaseDecision(Verdict.DO_NOT_SHIP, blockers[0].title, reasons, blockers, risks)
 
     if failed:
         reasons.append(f"Failing suites: {', '.join(failed)}")
@@ -120,9 +118,7 @@ def decide(
 
     if risks:
         reasons.append(f"{len(risks)} open risk(s): {risks[0].title}")
-        return ReleaseDecision(
-            Verdict.SHIP_WITH_RISK, risks[0].title, reasons, blockers, risks
-        )
+        return ReleaseDecision(Verdict.SHIP_WITH_RISK, risks[0].title, reasons, blockers, risks)
 
     reasons.append("Every suite passed on measured hardware data with no open risks.")
     return ReleaseDecision(Verdict.SHIP, "All gates green", reasons, blockers, risks)

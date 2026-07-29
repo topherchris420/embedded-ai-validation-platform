@@ -11,9 +11,9 @@ from __future__ import annotations
 import csv
 import math
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -114,7 +114,7 @@ def generate_imu_trajectory(
 
     for i in range(n):
         t = i * dt
-        roll, pitch, yaw = _euler_angles(profile, t)
+        roll, pitch, _yaw = _euler_angles(profile, t)
         droll, dpitch, dyaw = _euler_rates(profile, t)
 
         sin_r, cos_r = math.sin(roll), math.cos(roll)

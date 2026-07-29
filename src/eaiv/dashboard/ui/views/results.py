@@ -42,7 +42,7 @@ def _suite_table(report: dict[str, Any]) -> pd.DataFrame:
 
 
 def _metric_table(report: dict[str, Any], suite: str) -> pd.DataFrame:
-    entry = next(
+    entry: dict[str, Any] = next(
         (s for s in report.get("suites") or [] if s.get("name") == suite),
         {},
     )
@@ -175,10 +175,10 @@ def render(workspace: Workspace) -> None:
             table = _metric_table(report, suite)
             if not table.empty:
                 st.dataframe(table, use_container_width=True, hide_index=True)
-            entry = next((s for s in report.get("suites") or [] if s.get("name") == suite), {})
-            nested = {
-                k: v for k, v in (entry.get("metrics") or {}).items() if isinstance(v, dict)
-            }
+            entry: dict[str, Any] = next(
+                (s for s in report.get("suites") or [] if s.get("name") == suite), {}
+            )
+            nested = {k: v for k, v in (entry.get("metrics") or {}).items() if isinstance(v, dict)}
             for name, values in nested.items():
                 st.markdown(f"**{name}**")
                 st.dataframe(

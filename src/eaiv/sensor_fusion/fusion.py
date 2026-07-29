@@ -13,8 +13,9 @@ names through the plugin registry.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Protocol, cast
+from typing import Protocol, cast
 
 
 @dataclass

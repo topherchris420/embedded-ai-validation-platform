@@ -184,14 +184,16 @@ def run_demo(
             run_store=store,
             events=events,
             config_path=mission_path,
+            quiet=quiet,
         )
         outcome = pipeline.run(
             suite="all",
             baseline=baseline,
             save_baseline=save_baseline,
-            # A gate that would fail on mock-runtime timing jitter teaches
-            # nothing; the demo's regression story is the fault injection.
-            max_regression_pct=200.0,
+            # The default allowance is meaningful here: mock-runtime timings
+            # are informational rather than gating, so the only regressions
+            # the demo can report are the ones the fault injection causes.
+            max_regression_pct=10.0,
             run_name=name,
             trigger="demo",
         )

@@ -21,8 +21,8 @@ __all__ = [
     "DEMO_BASELINE_NAME",
     "Check",
     "CheckStatus",
-    "Diagnosis",
     "DemoResult",
+    "Diagnosis",
     "run_demo",
     "run_diagnostics",
 ]

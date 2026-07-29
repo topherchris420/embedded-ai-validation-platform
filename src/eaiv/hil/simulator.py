@@ -10,8 +10,8 @@ hardware and no QEMU binary installed.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, Iterator, Sequence
 
 from eaiv.hil.faults import Fault
 from eaiv.plugins import get_registry, register_plugin

@@ -8,6 +8,8 @@ a baseline are listed before you remove it.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
@@ -18,7 +20,7 @@ from eaiv.dashboard.ui.state import Workspace, goto
 from eaiv.runs.models import RunStatus
 
 
-def _archive_dir(workspace: Workspace):
+def _archive_dir(workspace: Workspace) -> Path:
     return workspace.baseline_dir / "archive"
 
 
@@ -85,7 +87,9 @@ def render(workspace: Workspace) -> None:
             format_func=lambda i: next(s.label for s in passing if s.id == i),
             key="bl_run",
         )
-        name = columns[1].text_input("Baseline name", value="", placeholder="release-0.4", key="bl_name")
+        name = columns[1].text_input(
+            "Baseline name", value="", placeholder="release-0.4", key="bl_name"
+        )
         columns[2].markdown("<div style='height:1.8rem'></div>", unsafe_allow_html=True)
         if columns[2].button("Promote", type="primary", disabled=not name, key="bl_promote"):
             source = next(s for s in passing if s.id == chosen_id)
@@ -164,7 +168,9 @@ def render(workspace: Workspace) -> None:
             st.caption(comparison.recommendation)
             counts = comparison.counts
             columns = st.columns(4)
-            for column, key in zip(columns, ["regressed", "improved", "unchanged", "added"]):
+            for column, key in zip(
+                columns, ["regressed", "improved", "unchanged", "added"], strict=False
+            ):
                 with column:
                     ui.tile(key.capitalize(), str(counts[key]))
             if st.button("Open full comparison", key="bl_open_compare"):
@@ -172,16 +178,19 @@ def render(workspace: Workspace) -> None:
 
     st.divider()
     st.markdown("#### Retire a baseline")
-    users = [m for m in missions if m.baseline == chosen]
-    if users:
+    dependents = [m for m in missions if m.baseline == chosen]
+    if dependents:
         st.warning(
-            f"{len(users)} saved mission(s) gate against {chosen!r}: "
-            + ", ".join(m.title for m in users)
+            f"{len(dependents)} saved mission(s) gate against {chosen!r}: "
+            + ", ".join(m.title for m in dependents)
             + ". They will fail to load this baseline once it is gone.",
             icon=None,
         )
     action = st.radio(
-        "Action", ["Archive (keep the file)", "Delete permanently"], key="bl_action", horizontal=True
+        "Action",
+        ["Archive (keep the file)", "Delete permanently"],
+        key="bl_action",
+        horizontal=True,
     )
     confirm = st.text_input(
         f"Type the baseline name ({chosen}) to confirm", value="", key="bl_confirm"

@@ -18,7 +18,7 @@ degradation plus stream statistics. Config example:
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta
 from eaiv.core.results import SuiteResult

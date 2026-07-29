@@ -600,9 +600,12 @@ def default_config(target_kind: str = "sim") -> dict[str, Any]:
         for spec in section.fields:
             if spec.default is None:
                 continue
-            if section.name == "target" and spec.target_kinds:
-                if target_kind not in spec.target_kinds:
-                    continue
+            if (
+                section.name == "target"
+                and spec.target_kinds
+                and target_kind not in spec.target_kinds
+            ):
+                continue
             value = spec.default
             set_nested(body, spec.key, list(value) if isinstance(value, list) else value)
         if body:
