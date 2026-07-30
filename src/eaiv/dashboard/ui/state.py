@@ -97,7 +97,11 @@ def _cached_report(path_text: str, mtime: float) -> dict[str, Any] | None:
 def load_report(path: str | Path) -> dict[str, Any] | None:
     """Cached, normalized report load. Returns None for unreadable files."""
     file = Path(path)
-    return _cached_report(str(file), _mtime(file))
+    # Bound to an annotated local because `st.cache_data` erases the wrapped
+    # function's return type when Streamlit's own types are unavailable (the
+    # lint environment installs the core dependencies only).
+    report: dict[str, Any] | None = _cached_report(str(file), _mtime(file))
+    return report
 
 
 @st.cache_data(show_spinner=False, max_entries=32)
@@ -122,7 +126,8 @@ def _cached_csv_head(path_text: str, mtime: float, max_rows: int) -> dict[str, A
 def load_csv_preview(path: str | Path, max_rows: int = 200_000) -> dict[str, Any]:
     """Cached CSV read capped at ``max_rows`` data rows."""
     file = Path(path)
-    return _cached_csv_head(str(file), _mtime(file), max_rows)
+    preview: dict[str, Any] = _cached_csv_head(str(file), _mtime(file), max_rows)
+    return preview
 
 
 def clear_caches() -> None:

@@ -22,10 +22,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      # The dashboard extras are installed so mypy checks the UI layer
+      # against the real Streamlit/pandas/plotly types. Without them,
+      # ignore_missing_imports degrades every call into that layer to Any and
+      # the checks there are vacuous.
       - name: Install package with dev tools
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,dashboard]"
 
       - name: Check Ruff
         run: ruff check .
@@ -37,6 +41,15 @@ jobs:
       # flags (disallow_untyped_defs, check_untyped_defs, warn_return_any).
       - name: Check types (mypy)
         run: mypy src/eaiv
+
+      # The package must also type-check for a contributor who installed only
+      # the core dependencies, which is what `pip install -e ".[dev]"` gives.
+      - name: Check types without the optional extras
+        run: |
+          python -m venv /tmp/core-only
+          /tmp/core-only/bin/pip install --quiet --upgrade pip
+          /tmp/core-only/bin/pip install --quiet -e ".[dev]"
+          /tmp/core-only/bin/mypy src/eaiv
 
   test:
     name: Test

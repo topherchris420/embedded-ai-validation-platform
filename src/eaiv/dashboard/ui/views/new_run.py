@@ -139,12 +139,14 @@ def _step_target(config: dict[str, Any], advanced: bool) -> str:
     current = str(get_nested(config, "target.kind") or "sim")
     if current not in kinds:
         current = kinds[0] if kinds else "sim"
-    kind = st.selectbox(
-        "Target backend",
-        kinds,
-        index=kinds.index(current) if current in kinds else 0,
-        help="'sim' runs everything in software with no hardware attached.",
-        key="field::target.kind",
+    kind = str(
+        st.selectbox(
+            "Target backend",
+            kinds,
+            index=kinds.index(current) if current in kinds else 0,
+            help="'sim' runs everything in software with no hardware attached.",
+            key="field::target.kind",
+        )
     )
     set_nested(config.setdefault("target", {}), "kind", kind)
     if kind == "sim":
