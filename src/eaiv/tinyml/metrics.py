@@ -30,7 +30,7 @@ class LatencyStats:
         if not self.samples:
             return 0.0
         ordered = sorted(self.samples)
-        k = min(len(ordered) - 1, max(0, int(round(pct / 100 * (len(ordered) - 1)))))
+        k = min(len(ordered) - 1, max(0, round(pct / 100 * (len(ordered) - 1))))
         return ordered[k] * 1000
 
     def min_ms(self) -> float:

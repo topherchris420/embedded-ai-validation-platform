@@ -18,8 +18,8 @@ every provider and consumer unchanged — no per-board host classes.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 from eaiv.plugins.targets import Target
 from eaiv.telemetry.adapter import TelemetryAdapter, build_adapter

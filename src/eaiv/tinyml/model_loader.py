@@ -16,12 +16,21 @@ class ModelMeta:
     size_bytes: int
 
 
-def load_model(path: str) -> tuple[ModelMeta, Any]:
+def load_model(path: str, runtime: str = "") -> tuple[ModelMeta, Any]:
     """Returns (metadata, runtime_handle). runtime_handle's type depends on
     backend: a tflite Interpreter, an onnxruntime InferenceSession, or a
-    lightweight mock object when the requested runtime isn't installed."""
+    lightweight mock object when the requested runtime isn't installed.
+
+    ``runtime="mock"`` forces the stand-in even when a real model file is
+    present, which is what ``tinyml.runtime: mock`` in the config means.
+    An empty or missing path also yields the mock, so a first run works
+    before any weights have been downloaded.
+    """
+    if runtime == "mock" or not str(path).strip():
+        return _mock_model(str(path))
+
     p = Path(path)
-    if not p.exists():
+    if not p.is_file():
         # Allow dry-run/CI usage against a synthetic model without the
         # actual weights file being present.
         return _mock_model(str(p))

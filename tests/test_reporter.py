@@ -43,6 +43,7 @@ def test_markdown_summary_contains_status_and_metrics(tmp_path):
     Reporter(str(tmp_path)).publish(_results())
     md = (tmp_path / "report.md").read_text()
     assert "Overall: **FAIL**" in md
-    assert "| tinyml | ✅ PASS |" in md
-    assert "| memory | ❌ FAIL | over budget |" in md
-    assert "| mean_ms | 1.5 |" in md
+    assert "| tinyml | PASS |" in md
+    assert "| memory | FAIL | over budget |" in md
+    # Metric rows carry the value with its unit and where it came from.
+    assert "| mean_ms | 1.500 ms |" in md

@@ -10,7 +10,7 @@ records, so dashboards, collectors, and suites stay board-agnostic.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterator
+from collections.abc import Iterator
 
 from eaiv.plugins import get_registry, register_plugin
 from eaiv.telemetry.protocol import Record, parse_stream

@@ -17,8 +17,9 @@ Architecture:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 # Type variable for plugin classes
 T = TypeVar("T")
@@ -90,7 +91,7 @@ class PluginRegistry:
         key = f"{plugin_type}:{name}"
         factory = self._factories.get(key)
         if factory is None:
-            available = [k for k in self._plugins.keys() if k.startswith(f"{plugin_type}:")]
+            available = [k for k in self._plugins if k.startswith(f"{plugin_type}:")]
             raise ValueError(
                 f"Plugin not found: {key}. Available {plugin_type} plugins: {available}"
             )

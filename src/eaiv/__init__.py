@@ -23,35 +23,35 @@ from __future__ import annotations
 __version__ = "0.3.0"
 
 # Core exports
-from eaiv.config import load_config, Config  # noqa: E402
-from eaiv.core.orchestrator import Orchestrator  # noqa: E402
-from eaiv.core.results import AggregateResult, SuiteResult  # noqa: E402
+from eaiv.config import Config, load_config
+from eaiv.core.orchestrator import Orchestrator
+from eaiv.core.results import AggregateResult, SuiteResult
 
 # Plugin system exports
-from eaiv.plugins import (  # noqa: E402
-    PluginRegistry,
+from eaiv.plugins import (
     PluginMetadata,
-    register_plugin,
+    PluginRegistry,
     get_registry,
     load_entry_point_plugins,
+    register_plugin,
 )
-from eaiv.plugins.targets import Target, TargetInfo  # noqa: E402
-from eaiv.plugins.sensors import (  # noqa: E402
-    Sensor,
-    IMUSensor,
-    VirtualSensor,
-    IMUData,
-    SensorReading,
-)
-from eaiv.plugins.benchmarks import (  # noqa: E402
+from eaiv.plugins.benchmarks import (
     Benchmark,
-    BenchmarkResult,
     BenchmarkConfig,
-    ModelMetadata,
+    BenchmarkResult,
     LatencyMetrics,
+    ModelMetadata,
 )
+from eaiv.plugins.sensors import (
+    IMUData,
+    IMUSensor,
+    Sensor,
+    SensorReading,
+    VirtualSensor,
+)
+from eaiv.plugins.targets import Target, TargetInfo
 
-__all__ = [
+__all__ = [  # noqa: RUF022 - grouped by subsystem, which reads better than sorted
     # Version
     "__version__",
     # Core

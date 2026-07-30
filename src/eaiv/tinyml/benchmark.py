@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-
-from typing import TYPE_CHECKING
 
 from eaiv.core.results import SuiteResult
 from eaiv.targets.base import Target
@@ -32,7 +30,7 @@ class TinyMLBenchmark:
         # inference), measured before the timed loop touches the runtime.
         t_start = time.perf_counter()
         try:
-            meta, runtime = load_model(model_path)
+            meta, runtime = load_model(model_path, str(self.spec.get("runtime", "")))
             x = self._load_input(meta.input_shape)
             self._invoke(runtime, meta, x)
         except Exception as e:  # noqa: BLE001
@@ -90,10 +88,56 @@ class TinyMLBenchmark:
             name="tinyml",
             passed=passed,
             metrics=summary,
-            notes=f"{meta.backend} model, {iterations} timed iterations",
+            notes=(
+                f"{meta.backend} model, {iterations} timed iterations"
+                + (
+                    " (mock runtime: timings reflect the stand-in, not the model)"
+                    if meta.backend == "mock"
+                    else " (host runtime, not on-device)"
+                )
+            ),
+            metric_meta=self._metric_meta(summary, meta),
         )
 
-    def _build_monitor(self) -> "PowerMonitor | None":
+    def _metric_meta(self, summary: dict, meta: ModelMeta) -> dict:
+        """Declare where each benchmark number came from.
+
+        Timings are host-side even for a real runtime — this suite runs
+        the model on the machine invoking eaiv, so nothing here is an
+        on-device measurement, and the report must not imply otherwise.
+        """
+        from eaiv.core.metrics import MetricProvenance, MetricSource, metric_meta
+
+        mock = meta.backend == "mock"
+        provenance, source = (
+            (MetricProvenance.MOCK, MetricSource.HOST)
+            if mock
+            else (MetricProvenance.MEASURED, MetricSource.HOST)
+        )
+
+        overrides: dict[str, tuple[MetricProvenance, MetricSource]] = {
+            "estimated_macs": (MetricProvenance.ESTIMATED, MetricSource.STATIC_ANALYSIS),
+            "tensor_arena_est_kb": (MetricProvenance.ESTIMATED, MetricSource.STATIC_ANALYSIS),
+        }
+        if not mock:
+            # There is no model file behind the mock runtime, so its
+            # "size" is not a measurement of anything.
+            overrides["model_size_bytes"] = (
+                MetricProvenance.MEASURED,
+                MetricSource.STATIC_ANALYSIS,
+            )
+        power_spec = self.spec.get("power") or {}
+        power_kind = str(power_spec.get("kind", "")).lower()
+        power_origin = (
+            (MetricProvenance.SIMULATED, MetricSource.SIMULATOR)
+            if power_kind in ("", "sim")
+            else (MetricProvenance.MEASURED, MetricSource.DEVICE)
+        )
+        for key in ("mean_power_mw", "peak_power_mw", "energy_per_inference_mj"):
+            overrides[key] = power_origin
+        return metric_meta(summary, provenance, source, overrides)
+
+    def _build_monitor(self) -> PowerMonitor | None:
         """Power monitoring is opt-in: ``tinyml.power: {kind: sim, ...}``."""
         power_spec = self.spec.get("power")
         if not power_spec:

@@ -40,25 +40,62 @@ def test_pipeline_green_run_with_telemetry_and_baseline_promotion(tmp_path):
     assert store.load("good")["all_passed"] is True
 
 
+def _fusion_cfg() -> Config:
+    """A config whose metrics are computed over a dataset, so they gate."""
+    return Config(
+        {
+            "target": {"kind": "sim", "binary": "fw.elf"},
+            "sensor_fusion": {
+                "source": "datasets/imu/imu_run1.csv",
+                "algorithm": "complementary",
+            },
+        }
+    )
+
+
 def test_pipeline_regression_gate_fails(tmp_path):
     store = BaselineStore(tmp_path / "baselines")
     report_dir = tmp_path / "reports"
-    pipe = ValidationPipeline(_cfg(), report_dir=str(report_dir), baseline_store=store)
+    pipe = ValidationPipeline(_fusion_cfg(), report_dir=str(report_dir), baseline_store=store)
 
-    assert pipe.run(suite="tinyml", save_baseline="base").passed
+    assert pipe.run(suite="fusion", save_baseline="base").passed
 
-    # Regressed baseline: pretend the past was 100x faster.
+    # Regressed baseline: pretend the past was 100x more accurate.
     payload = store.load("base")
     for suite in payload["suites"]:
-        if "mean_ms" in suite["metrics"]:
-            suite["metrics"]["mean_ms"] /= 100.0
+        for key in ("roll_rmse_deg", "pitch_rmse_deg"):
+            if key in suite["metrics"]:
+                suite["metrics"][key] /= 100.0
     store.path("base").write_text(json.dumps(payload))
 
-    result = pipe.run(suite="tinyml", baseline="base")
+    result = pipe.run(suite="fusion", baseline="base")
     assert not result.passed
     compare = next(s for s in result.stages if s.name == "compare")
     assert compare.status == "failed"
     assert "regression" in compare.detail
+
+
+def test_mock_runtime_timings_do_not_gate_the_release(tmp_path):
+    """A stand-in runtime's timings vary by orders of magnitude between
+    runs and say nothing about the code under review, so they are reported
+    as informational instead of failing the gate."""
+    store = BaselineStore(tmp_path / "baselines")
+    pipe = ValidationPipeline(_cfg(), report_dir=str(tmp_path / "reports"), baseline_store=store)
+    assert pipe.run(suite="tinyml", save_baseline="base").passed
+
+    payload = store.load("base")
+    for suite in payload["suites"]:
+        if "mean_ms" in suite["metrics"]:
+            suite["metrics"]["mean_ms"] /= 100.0  # a 10,000% "regression"
+    store.path("base").write_text(json.dumps(payload))
+
+    result = pipe.run(suite="tinyml", baseline="base")
+    assert result.passed
+    assert result.regression is not None
+    mean_delta = next(d for d in result.regression.deltas if d.metric == "mean_ms")
+    assert mean_delta.regressed is False
+    assert mean_delta.direction == 0  # informational, not lower-is-better
+    assert result.regression.counts()["informational"] >= 1
 
 
 def test_pipeline_failing_suite_marks_validate_and_blocks_promotion(tmp_path):

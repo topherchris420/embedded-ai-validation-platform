@@ -3,7 +3,7 @@
 This brings the rigor of software testing and continuous integration to the physical world of edge AI. It enables engineers to stress-test, profile, and validate TinyML models across hardware constraints, sensor variability, and real-world conditions before they reach production devices.
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
-![Typed](https://img.shields.io/badge/mypy-strict-blue)
+![Typed](https://img.shields.io/badge/mypy-checked-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![CI](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/topherchris420/embedded-ai-validation-platform/actions/workflows/ci.yml)
 
@@ -12,9 +12,9 @@ medical devices, IoT, and edge-AI research.
 
 ![Dashboard preview](docs/images/dashboard-preview.png)
 
-*Preview of the validation dashboard — run overview, latency benchmarks, and
-a workflow simulator for selecting target hardware, validation suites, and
-HIL fault injection before kicking off a pipeline run.*
+*EAIV Mission Control — release verdict, run status, budget headroom, and
+the prioritized diagnosis, over a guided workflow that goes from choosing a
+target to deciding whether to ship.*
 
 ## Capabilities
 
@@ -27,9 +27,13 @@ HIL fault injection before kicking off a pipeline run.*
 | Sensor fusion | Complementary, Mahony, Madgwick, 1-D Kalman, and 4-state EKF filters scored against ground-truth replay datasets (RMSE, drift) |
 | Real-time profiling | WCET, jitter, and deadline-miss analysis from task telemetry |
 | Hardware-in-the-loop | Deterministic fault injection (Gaussian noise, packet loss, timing jitter, sensor outages) over replayed or synthetic sensor streams |
-| Telemetry | Typed serial protocol, per-board adapter plugins, capture to CSV and per-field statistics |
+| Telemetry | Typed serial protocol, per-board adapter plugins, capture to CSV, per-field statistics, sampling-rate and gap analysis |
 | Regression gating | Named baselines, direction-aware metric comparison, CI exit codes (`eaiv compare`, `eaiv pipeline`) |
-| Dashboard | Streamlit analysis UI: latency distributions, metric history, cross-hardware comparison, baseline diff with release verdict |
+| Validation runs | Every run recorded with a manifest, event log, artifacts, and the resolved config that produced it; interrupted runs are detected, not left "running" |
+| Diagnosis | Deterministic insight engine: evidence-backed findings with impact, confidence, and the next action — ordered by an explicit priority table |
+| Measurement provenance | Every metric labelled measured, simulated, estimated, or mock, with its source (device, host, simulator, static analysis, dataset) |
+| Release decision | Compatibility-checked run comparison (target, provenance, input hashes, suite coverage) with a recommendation and Markdown/JSON export |
+| Mission Control | Guided Streamlit workflow: build a mission, launch it, watch it live, read the diagnosis, compare, promote a baseline |
 
 ## Repository layout
 
@@ -47,7 +51,12 @@ embedded-ai-validation-platform/
 ├── examples/           # Runnable example scripts
 └── src/eaiv/           # Python package
     ├── plugins/        # Plugin registry + base classes
-    ├── core/           # Orchestrator, reporter, regression, baseline, pipeline
+    ├── core/           # Orchestrator, pipeline, reporter, regression,
+    │                   #   baseline, comparison, metrics, report schema
+    ├── runs/           # Run manifests, events, cancellation, run store
+    ├── insights/       # Deterministic diagnosis + release verdict
+    ├── configspec/     # Config schema, validation, presets, missions
+    ├── diagnostics/    # `eaiv doctor` checks and the guided demo
     ├── targets/        # Hardware targets (qemu, serial, jlink, sim)
     ├── firmware/       # Flashing and firmware test execution
     ├── tinyml/         # Inference benchmarks
@@ -57,30 +66,44 @@ embedded-ai-validation-platform/
     ├── datasets/       # Dataset generator, metadata schema, validation
     ├── telemetry/      # Protocol parser, adapters, providers, collector
     ├── hil/            # Fault models, simulator, HIL suite
-    ├── dashboard/      # Typed data layer behind the UI
+    ├── dashboard/      # Typed data layer + Mission Control UI
     └── rt_perf/        # Real-time profiling
 ```
 
 ## Quick start
+
+Three commands from clone to a diagnosed validation result — no hardware,
+no model weights, no emulator:
 
 ```bash
 git clone https://github.com/topherchris420/embedded-ai-validation-platform.git
 cd embedded-ai-validation-platform
 pip install -e ".[all]"
 
-# Full validation run against the simulated device (no hardware required)
+eaiv doctor      # is this machine ready? what's missing, and how to fix it
+eaiv demo        # three real simulated runs: reference, candidate, and a failure
+eaiv dashboard   # open EAIV Mission Control on the results
+```
+
+`eaiv demo`'s third run fails on purpose — its sensor stream is degraded
+until the fusion filter genuinely leaves its error envelope — so there is a
+real failure to diagnose. Every metric it produces is labelled
+**simulated**, because none of it was measured on hardware.
+
+Prefer the terminal?
+
+```bash
+# Every suite against the simulated device
 eaiv run --config configs/sim.yaml --suite all
 
-# Individual suites
-eaiv run --config configs/default.yaml --suite fusion
-eaiv run --config configs/default.yaml --suite hil
-
-# Full pipeline: validate -> telemetry -> regression gate -> baseline
+# The full recorded pipeline: validate -> telemetry -> gate -> promote
 eaiv pipeline --config configs/sim.yaml --telemetry-duration 2 --save-baseline first
 eaiv pipeline --config configs/sim.yaml --baseline first
 
-# Dashboard
-streamlit run dashboard/python/app.py
+# Inspect and compare what was recorded
+eaiv runs list
+eaiv runs show <run-id>
+eaiv runs compare <baseline-run-id> <candidate-run-id>
 ```
 
 See [docs/getting-started.md](docs/getting-started.md) for the guided
@@ -122,11 +145,30 @@ eaiv datasets validate datasets/
 eaiv baseline save reports/latest.json --name release-1
 eaiv compare baselines/release-1.json reports/latest.json --max-regression-pct 10
 
+# Recorded runs
+eaiv runs list                          # every recorded run, newest first
+eaiv runs show <run-id> [--logs]        # stages, artifacts, and the diagnosis
+eaiv runs compare <base-id> <cur-id>    # [--format text|markdown|json]
+
+# Configuration
+eaiv config validate <cfg>    # field-by-field, with fixes and exit codes
+eaiv config resolve  <cfg>    # after `inherit:` merging
+eaiv config presets           # the built-in mission presets
+
+# Operations
+eaiv doctor                   # diagnose the environment, with fixes
+eaiv demo                     # a complete simulated validation history
+eaiv dashboard                # launch EAIV Mission Control
+
 # Introspection
 eaiv show --config <cfg>      # resolved configuration (after inherit)
 eaiv plugins                  # all registered plugins
 eaiv targets                  # target backends only
 ```
+
+`eaiv run` is unchanged and writes report artifacts only. `eaiv pipeline`
+additionally records the run under `reports/runs/<run-id>/`; pass
+`--no-record` to opt out.
 
 ## Supported hardware
 
@@ -159,10 +201,22 @@ transport fits, a `target` plugin — no framework changes. See
 | Boot time, free heap | firmware protocol (`U`/`M` lines) | ms, bytes |
 | WCET, jitter, deadline misses | `rt` suite | µs, count |
 
-Reports embed target identity (name, architecture, clock) and platform
-version, so results are comparable across boards and releases. Output
-formats: console, JSON, CSV (long format), Markdown, HTML. Metric
-definitions and reproducibility rules: [docs/benchmarking.md](docs/benchmarking.md).
+Reports embed everything needed to reproduce and compare a run: target
+identity, resolved configuration, host and git revision, SHA-256 hashes of
+the model/firmware/dataset, the thresholds applied, and each metric's unit,
+direction, and provenance. Output formats: console, JSON, CSV (long
+format), Markdown, HTML.
+
+**Simulated results are never presented as hardware measurements.** Every
+metric declares whether it was `measured`, `simulated`, `estimated`, or
+`mock`, and where it came from. TinyML timings are host-side even with a
+real runtime; QEMU counts as simulated because an emulator models timing
+rather than exhibiting it; the RT profiler labels its synthetic-trace
+fallback. Metrics labelled `mock` are reported but never gate a release.
+
+Metric definitions and reproducibility rules:
+[docs/benchmarking.md](docs/benchmarking.md). Schema, storage, and
+provenance details: [docs/runs-and-reports.md](docs/runs-and-reports.md).
 
 ## Plugin system
 
@@ -212,13 +266,20 @@ mypy src/eaiv && ruff check . && black --check .   # static checks
 ```
 
 Every subsystem has a hardware-free test path via the simulated target,
-the mock inference runtime, and committed replay datasets.
+the mock inference runtime, and committed replay datasets. The suite covers
+run-manifest serialization, report-schema migration, event ordering,
+cancellation, config validation, insight generation, comparison
+compatibility, path-safety guards, HTML escaping, and a full simulated
+mission end to end — all deterministic.
 
 ## Continuous integration
 
 GitHub Actions workflows run on every push and pull request:
 
-- Lint: ruff, black, mypy (strict, `disallow_untyped_defs`)
+- Lint and types: ruff (explicitly pinned rule set), black, mypy
+  (`disallow_untyped_defs`, `check_untyped_defs`, `warn_return_any`,
+  `no_implicit_optional`; not `strict` — see `[tool.mypy]` in
+  `pyproject.toml` for the exact flags)
 - Tests with coverage on Python 3.12
 - Firmware builds for all four supported boards
 - Documentation link validation and dataset validation
@@ -229,6 +290,7 @@ GitHub Actions workflows run on every push and pull request:
 
 - [Getting Started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
+- [Runs, Reports, and Events](docs/runs-and-reports.md)
 - [Benchmarking Guide](docs/benchmarking.md)
 - [Usage Guide](docs/usage.md)
 - [Configuration Reference](docs/config-reference.md)

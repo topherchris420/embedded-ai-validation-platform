@@ -1,32 +1,95 @@
 # Architecture
 
+The platform is layered so that the parts that *decide* things are
+independent of the parts that *display* them. Nothing in the core imports a
+UI toolkit; everything the dashboard shows can be computed, and tested,
+headlessly.
+
 ```
-                         ┌─────────────────────┐
-                         │       eaiv.cli       │
-                         │  (click entry point) │
-                         └──────────┬───────────┘
-                                    │
-                         ┌──────────▼───────────┐
-                         │  eaiv.core.Orchestrator │
-                         │  builds target, runs   │
-                         │  requested suites,     │
-                         │  aggregates results    │
-                         └──────────┬───────────┘
-                                    │
-   ┌───────────┬───────────┬─────┼─────────┬───────────────┬─────────────┐
-   ▼           ▼           ▼     ▼         ▼               ▼             ▼
+        eaiv.cli                        eaiv.dashboard.ui
+   (click entry point)              (Streamlit Mission Control)
+            │                                  │
+            └──────────────┬───────────────────┘
+                           ▼
+                eaiv.core.pipeline.ValidationPipeline
+        build → validate → telemetry → compare → promote
+                           │
+        ┌──────────────────┼────────────────────────────┐
+        ▼                  ▼                            ▼
+  eaiv.core.Orchestrator   eaiv.runs                eaiv.configspec
+  builds the target,       RunManifest, events,     schema, field
+  runs suites, aggregates  cancellation, store      validation, presets
+        │
+   ┌────┴──────┬────────────┬──────────────┬─────────────┬───────────┐
+   ▼           ▼            ▼              ▼             ▼           ▼
 eaiv.targets eaiv.firmware eaiv.tinyml eaiv.sensor_fusion eaiv.rt_perf eaiv.hil
-(qemu/serial (flash, boot, (benchmark  (compl/Mahony/     (WCET,       (faults,
- /jlink/sim) pattern match) lat/mem)   Madgwick/KF/EKF)   jitter)      replay, sim)
-                                 │
-     everything above is constructed through eaiv.plugins (registry +
-     entry-point discovery); eaiv.datasets provides seeded replay logs
-                                 │
-                         ┌──────────▼───────────┐
-                         │  eaiv.core.Reporter    │
-                         │  console / JSON / HTML │
-                         └────────────────────────┘
+(qemu/serial (flash, boot, (benchmark  (compl/Mahony/     (WCET,      (faults,
+ /jlink/sim) pattern match) lat/mem)   Madgwick/KF/EKF)   jitter)     replay, sim)
+        │
+   everything above is constructed through eaiv.plugins (registry +
+   entry-point discovery); eaiv.datasets provides seeded replay logs
+        │
+        ▼
+  eaiv.core.Reporter ──► eaiv.insights ──► eaiv.core.comparison
+  console/JSON/CSV/       prioritized       compatibility checks,
+  Markdown/HTML +         findings and      deltas, release
+  provenance              release verdict   recommendation
+        │
+        ▼
+  eaiv.dashboard (typed, Streamlit-free data layer)
 ```
+
+## Layers
+
+| Package | Responsibility |
+|---------|----------------|
+| `eaiv.plugins` | Registry and base classes; entry-point discovery for external packages |
+| `eaiv.configspec` | What the YAML *means*: schema, field validation, presets, saved missions, CLI command preview |
+| `eaiv.core` | Orchestration, the pipeline, report writing, metric identity, regression and comparison |
+| `eaiv.runs` | The run as a first-class object: manifest, typed events, cancellation, on-disk store |
+| `eaiv.insights` | Deterministic diagnosis and the release verdict |
+| `eaiv.diagnostics` | Environment checks (`eaiv doctor`) and the guided demo |
+| `eaiv.dashboard` | Typed data layer (no Streamlit) plus `ui/` presentation |
+
+Two rules keep the layering honest:
+
+1. **The core never imports a UI toolkit.** Execution reports progress
+   through an `EventSink` — any object with `emit(event)`. The dashboard,
+   the CLI, a test, and a JSONL file are all just sinks.
+2. **No business logic in a page.** Every dashboard view module exposes a
+   single `render(workspace)` and delegates loading, diagnosis,
+   comparison, and validation to the packages above.
+
+## Runs and observability (`eaiv.runs`)
+
+A report records what was measured; a `RunManifest` records what happened —
+identity, timing, target, resolved config, stage results, artifacts,
+provenance, and structured failure detail. Manifests are written atomically
+into `reports/runs/<run-id>/`, and a run whose process died is reconciled to
+`interrupted` rather than left looking active.
+
+Execution emits typed `PipelineEvent` values (run created, stage started,
+progress, log, target connected, artifact, metric, suite passed/failed,
+stage completed, run cancelled/failed/completed) with monotonic per-run
+sequence numbers. Cancellation is cooperative and can be requested through
+a file in the run directory, so one process can stop a run another started.
+
+Callers that pass no session, sink, or store get exactly the previous
+synchronous behaviour. See [runs-and-reports.md](runs-and-reports.md).
+
+## Diagnosis (`eaiv.insights`)
+
+A set of small, independent rules over data the run already recorded. Each
+produces a `ValidationInsight` with severity, category, evidence, impact, a
+confidence level, and a recommended action. Ordering comes from an explicit
+category-rank table — crashes, then deadline misses and hard budget
+violations, then release-blocking regressions, then accuracy/robustness
+failures, then thin headroom, then improvements, then observations — so
+"why did this come first?" is answerable and unit-testable.
+
+Rules that reason rather than read mark their output `INFERRED`. Nothing is
+generated: an insight that cannot point at the evidence behind it does not
+exist.
 
 ## Targets (`eaiv.targets`)
 

@@ -1,0 +1,17 @@
+# Theme for EAIV Mission Control when Streamlit is launched from the
+# repository root. `eaiv dashboard` sets the same values through the
+# environment so the look is identical from any working directory.
+#
+# The accent is a instrument blue rather than Streamlit's default red:
+# on a console whose job is separating safe from unsafe, red belongs to
+# failures only.
+
+[theme]
+primaryColor = "#2f6f9f"
+base = "light"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true

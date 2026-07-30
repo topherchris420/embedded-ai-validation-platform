@@ -96,19 +96,47 @@ class RegressionReport:
         return out
 
 
+#: Metric provenances whose values describe a stand-in rather than the
+#: system under test. Comparing them across runs measures the stand-in, so
+#: they are reported but never allowed to gate a release.
+NON_GATING_PROVENANCE = frozenset({"mock"})
+
+
+def _declared_provenance(suite_payload: dict, metric: str) -> str:
+    """Provenance a suite declared for one metric, or ``""``."""
+    declared = suite_payload.get("metric_meta")
+    if not isinstance(declared, dict):
+        return ""
+    entry = declared.get(metric)
+    if not isinstance(entry, dict):
+        return ""
+    return str(entry.get("provenance", ""))
+
+
 def compare_reports(
     baseline: dict,
     current: dict,
     max_regression_pct: float = 10.0,
+    gate_non_measured: bool = False,
 ) -> RegressionReport:
-    """Compare every shared numeric metric between two report payloads."""
+    """Compare every shared numeric metric between two report payloads.
+
+    Metrics a suite labelled ``mock`` are downgraded to informational: a
+    stand-in runtime's timings vary by orders of magnitude between runs and
+    say nothing about the code under review, so gating on them produces
+    noise instead of signal. Pass ``gate_non_measured=True`` to compare
+    them anyway. Metrics without declared provenance — every legacy report
+    — are unaffected and still gate as before.
+    """
     base_suites = {s["name"]: s.get("metrics", {}) for s in baseline.get("suites", [])}
     curr_suites = {s["name"]: s.get("metrics", {}) for s in current.get("suites", [])}
+    curr_payloads = {s["name"]: s for s in current.get("suites", []) if isinstance(s, dict)}
 
     report = RegressionReport()
     for suite_name in sorted(set(base_suites) & set(curr_suites)):
         base_metrics = base_suites[suite_name]
         curr_metrics = curr_suites[suite_name]
+        suite_payload = curr_payloads.get(suite_name, {})
         for metric in sorted(set(base_metrics) & set(curr_metrics)):
             b, c = base_metrics[metric], curr_metrics[metric]
             if isinstance(b, bool) or isinstance(c, bool):
@@ -117,6 +145,10 @@ def compare_reports(
                 continue
             change_pct = ((c - b) / abs(b) * 100.0) if b != 0 else (0.0 if c == 0 else float("inf"))
             direction = metric_direction(metric)
+            if not gate_non_measured and (
+                _declared_provenance(suite_payload, metric) in NON_GATING_PROVENANCE
+            ):
+                direction = 0
             if direction > 0:
                 regressed = change_pct < -max_regression_pct
             elif direction < 0:

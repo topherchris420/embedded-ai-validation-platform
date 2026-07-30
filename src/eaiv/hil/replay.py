@@ -7,9 +7,9 @@ synthetic generator, so every HIL run is reproducible.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterator
 
 from eaiv.datasets import generate_imu_trajectory, read_imu_csv
 

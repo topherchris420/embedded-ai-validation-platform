@@ -43,7 +43,9 @@ tinyml = [
 qemu = []
 # Dashboard
 dashboard = [
-    "streamlit>=1.30",
+    # 1.49 introduced the `width=` argument that replaced
+    # `use_container_width`, which Streamlit deprecated for removal.
+    "streamlit>=1.49",
     "plotly>=5.18",
     "pandas>=2.0",
 ]
@@ -67,7 +69,56 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-lint.extend-ignore = ["E501", "ANN401"]
+
+[tool.ruff.lint]
+# Pinned explicitly rather than relying on ruff's defaults: the default
+# rule set changes between releases, so an unpinned selection means CI can
+# start failing on an unchanged codebase.
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "PIE",  # misc lints
+    "RUF",  # ruff-specific
+    "S",    # bandit — subprocess, paths, and deserialization matter here
+    "BLE",  # blind except
+    "TRY",  # exception anti-patterns
+]
+extend-ignore = [
+    "E501",    # line length is handled by black
+    "ANN401",
+    "TRY003",  # long messages in raise: the messages are the product here
+    "TRY300",  # return-in-else reads worse than an early return
+    "TRY400",  # log.error vs log.exception: chosen per call site
+    "S101",    # assert is fine in tests (and in internal invariants)
+    "SIM108",  # ternaries are not always clearer than if/else
+    "B008",    # click decorators legitimately call functions in defaults
+    # Seeded `random` is the point: fault injection and the simulated power
+    # monitor must be reproducible, not unpredictable.
+    "S311",
+    # Every subprocess call in this package uses a fixed argv and no shell.
+    # S602 (shell=True) stays enabled, which is the rule that matters.
+    "S603",
+    "S607",
+    # ValueError is the documented contract for "this file is not a valid
+    # report/config"; callers (and tests) catch ValueError, and TypeError
+    # would be a breaking change for no benefit.
+    "TRY004",
+    # En dashes and non-breaking hyphens are deliberate in user-facing prose.
+    "RUF001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests exercise error paths, poke at private seams, and use fixtures that
+# shadow their own names.
+"tests/**" = ["S", "BLE", "TRY", "RUF018", "B011"]
+# The Streamlit layer builds HTML from escaped values on purpose.
+"src/eaiv/dashboard/ui/**" = ["S308"]
 
 [tool.mypy]
 python_version = "3.12"

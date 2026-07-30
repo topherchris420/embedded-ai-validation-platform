@@ -8,8 +8,9 @@ and virtual/simulated sensors.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 from eaiv.plugins import register_plugin
 
@@ -194,15 +195,15 @@ class SensorPluginMixin:
 
 
 __all__ = [
-    "Sensor",
-    "IMUSensor",
-    "GPSSensor",
-    "BarometerSensor",
-    "VirtualSensor",
-    "SensorReading",
-    "IMUData",
-    "GPSData",
     "BarometerData",
+    "BarometerSensor",
+    "GPSData",
+    "GPSSensor",
+    "IMUData",
+    "IMUSensor",
+    "Sensor",
     "SensorPluginMixin",
+    "SensorReading",
+    "VirtualSensor",
     "register_plugin",
 ]

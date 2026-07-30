@@ -6,6 +6,6 @@ New code should use eaiv.plugins.targets.Target directly.
 
 from __future__ import annotations
 
-from eaiv.plugins.targets import Target, TargetInfo  # noqa: F401
+from eaiv.plugins.targets import Target, TargetInfo
 
 __all__ = ["Target", "TargetInfo"]

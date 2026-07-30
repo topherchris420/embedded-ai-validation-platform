@@ -206,12 +206,12 @@ class BenchmarkPluginMixin:
 
 __all__ = [
     "Benchmark",
-    "BenchmarkSuite",
-    "BenchmarkResult",
     "BenchmarkConfig",
-    "ModelMetadata",
+    "BenchmarkPluginMixin",
+    "BenchmarkResult",
+    "BenchmarkSuite",
     "LatencyMetrics",
     "MemoryMetrics",
-    "BenchmarkPluginMixin",
+    "ModelMetadata",
     "register_plugin",
 ]

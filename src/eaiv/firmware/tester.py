@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+from eaiv.core.metrics import metric_meta, target_provenance
 from eaiv.core.results import SuiteResult
 from eaiv.targets.base import Target
 
@@ -23,7 +24,7 @@ class FirmwareTester:
         last_output = ""
         passed = False
         attempt = 0
-        for attempt in range(retries + 1):
+        for attempt in range(retries + 1):  # noqa: B007 - read after the loop
             try:
                 self.target.flash(binary)
                 self.target.reset()
@@ -39,13 +40,16 @@ class FirmwareTester:
                 passed = True
                 break
 
+        metrics = {
+            "attempts": attempt + 1,
+            "output_bytes": len(last_output),
+            "target": self.target.info().name,
+        }
+        provenance, source = target_provenance(self.target.spec)
         return SuiteResult(
             name="firmware",
             passed=passed,
-            metrics={
-                "attempts": attempt + 1,
-                "output_bytes": len(last_output),
-                "target": self.target.info().name,
-            },
+            metrics=metrics,
             notes=(last_output[-400:] if not passed else "matched pass pattern"),
+            metric_meta=metric_meta(metrics, provenance, source),
         )

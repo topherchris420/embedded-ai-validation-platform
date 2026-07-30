@@ -17,7 +17,11 @@ where each piece lives:
 | Datasets (generation, replay logs) | `src/eaiv/datasets/` | `datasets/imu/*.csv` |
 | HIL (simulator, virtual sensors, faults, runners) | `src/eaiv/hil/` | `hil/README.md` |
 | Telemetry (protocol, adapters, collection) | `src/eaiv/telemetry/` | — |
-| Dashboard | `src/eaiv/dashboard/` (data layer) | `dashboard/python/app.py` (Streamlit UI) |
+| Dashboard | `src/eaiv/dashboard/` (data layer) + `src/eaiv/dashboard/ui/` (Streamlit) | `dashboard/python/app.py` (compatibility shim), [dashboard guide](../dashboard/README.md) |
+| Validation runs (manifests, events, cancellation, store) | `src/eaiv/runs/` | [runs-and-reports.md](runs-and-reports.md) |
+| Diagnosis and release verdict | `src/eaiv/insights/` | — |
+| Configuration schema, validation, presets, missions | `src/eaiv/configspec/` | [config-reference.md](config-reference.md) |
+| Environment diagnosis and the guided demo | `src/eaiv/diagnostics/` | — |
 | Python tooling (CLI, flashing, monitoring, automation) | `src/eaiv/cli.py`, `src/eaiv/firmware/`, `src/eaiv/targets/` | — |
 | Plugin system | `src/eaiv/plugins/` | [plugin-development.md](plugin-development.md) |
 | CI | — | `.github/workflows/`, `ci/check_docs.py` |
@@ -40,11 +44,19 @@ pip install platformio            # only for firmware work
 ```bash
 pytest tests/ -q                 # unit + integration tests (hardware-free)
 ruff check . && black --check .  # lint/format (CI-enforced)
-mypy src/eaiv                    # strict-ish typing (CI-enforced)
+mypy src/eaiv                    # typed, not strict mode (CI-enforced)
 python ci/check_docs.py          # markdown link validation (CI-enforced)
+eaiv doctor --no-hardware        # environment diagnosis
 eaiv run --config configs/sim.yaml --suite all   # end-to-end smoke
+eaiv demo                        # the guided three-run experience
 cd firmware && pio run           # builds all four board environments
 ```
+
+Ruff's rule selection is pinned explicitly in `pyproject.toml` rather than
+left to the default: an unpinned selection means a new ruff release can
+fail CI on unchanged code. mypy runs with `disallow_untyped_defs`,
+`check_untyped_defs`, `warn_return_any`, and `no_implicit_optional` —
+`strict` is **not** enabled; see `[tool.mypy]` for the exact flags.
 
 Everything above runs with no hardware attached: the `sim` target
 emulates a device end-to-end (boot, telemetry, verdict, commands), QEMU
@@ -53,7 +65,21 @@ missing model files.
 
 ## Key flows
 
-### Validation run
+### Recorded run
+
+`eaiv pipeline` → `ValidationPipeline` creates a `RunSession` (manifest +
+event sinks + cancellation token), then walks the stages
+(build → validate → telemetry → compare → save_baseline). Each stage
+transition writes the manifest atomically and appends to `events.jsonl`, so
+the run is inspectable while it executes and survives the process. The
+dashboard's launcher reuses the same path on a worker thread.
+
+Then: `eaiv.insights.generate_insights` turns the report into prioritized
+findings, and `eaiv.insights.decide` turns those into a release verdict.
+Both are pure functions of their inputs — that is what makes the diagnosis
+testable.
+
+### Validation run (suites only)
 
 `eaiv run` → `Orchestrator` builds the target via the plugin registry,
 runs each requested suite (`firmware`, `tinyml`, `fusion`, `hil`,

@@ -96,9 +96,8 @@ class Target(ABC):
         """
         ...
 
-    def close(self) -> None:
+    def close(self) -> None:  # noqa: B027 - a no-op default is the contract
         """Clean up resources. Override if needed."""
-        pass
 
     def __enter__(self) -> Target:
         return self
