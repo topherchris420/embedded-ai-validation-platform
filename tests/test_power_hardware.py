@@ -79,8 +79,8 @@ def test_ina226_voltage_current_power_math() -> None:
     mock_bus.devices[addr] = {
         REG_BUSVOLTAGE: 2640,
         REG_SHUNTVOLTAGE: 2000,  # 2000 * 2.5uV = 5.0 mV -> 5mV / 0.1 ohm = 50 mA
-        REG_CURRENT: 512,        # 512 * current_lsb (~0.09765mA) ~ 50 mA
-        REG_POWER: 67,           # 67 * 25 * current_lsb * 1000 ~ 165 mW
+        REG_CURRENT: 512,  # 512 * current_lsb (~0.09765mA) ~ 50 mA
+        REG_POWER: 67,  # 67 * 25 * current_lsb * 1000 ~ 165 mW
     }
 
     monitor = INA226PowerMonitor(
@@ -153,6 +153,7 @@ def test_ppk2_source_mode_and_packet_decoding() -> None:
     # Decode a synthetic 4-byte packet (range 3, ADC 8192)
     val = 8192 | (3 << 14)
     import struct
+
     pkt = struct.pack("<I", val)
     p_mw = monitor.decode_packet(pkt)
     assert p_mw > 0.0

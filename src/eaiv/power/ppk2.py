@@ -28,16 +28,13 @@ class PPK2SerialTransport(ABC):
     """Abstract interface for serial communication with PPK2."""
 
     @abstractmethod
-    def write(self, data: bytes) -> None:
-        ...
+    def write(self, data: bytes) -> None: ...
 
     @abstractmethod
-    def read(self, size: int) -> bytes:
-        ...
+    def read(self, size: int) -> bytes: ...
 
     @abstractmethod
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 class RealPPK2Serial(PPK2SerialTransport):
