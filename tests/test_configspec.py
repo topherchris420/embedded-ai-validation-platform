@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -315,7 +317,7 @@ def test_inheritance_records_its_sources(tmp_path):
     cfg = load_config(tmp_path / "child.yaml")
     assert cfg["target"]["kind"] == "sim"
     assert cfg["firmware"]["retries"] == 5  # merged key-by-key, not replaced
-    assert [p.split("/")[-1] for p in cfg.sources] == ["base.yaml", "child.yaml"]
+    assert [Path(p).name for p in cfg.sources] == ["base.yaml", "child.yaml"]
 
 
 def test_inheritance_cycles_are_reported_not_hung(tmp_path):

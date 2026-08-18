@@ -88,8 +88,18 @@ def _process_alive(pid: int) -> bool:
     """True when a PID exists on this host (best effort, cross-platform)."""
     if pid <= 0:
         return False
-    if os.name == "nt":  # pragma: no cover - exercised on Windows only
-        return True  # no cheap portable probe; fall back to the heartbeat
+    if os.name == "nt":
+        import ctypes
+
+        windll = getattr(ctypes, "windll", None)
+        if windll is not None:
+            kernel32 = windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, pid)
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True
+            return False
+        return True
     try:
         os.kill(pid, 0)
     except ProcessLookupError:

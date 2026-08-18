@@ -6,6 +6,7 @@ import random
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Any
 
 from eaiv.plugins import get_registry, register_plugin
 
@@ -66,6 +67,7 @@ class SimulatedPowerMonitor(PowerMonitor):
         noise_mw: float = 5.0,
         sample_rate_hz: float = 1000.0,
         seed: int = 0,
+        **_kwargs: Any,
     ) -> None:
         self.active_mw = active_mw
         self.idle_mw = idle_mw

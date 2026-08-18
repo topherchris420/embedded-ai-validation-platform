@@ -37,7 +37,7 @@ jlink = ["pylink-square>=0.13"]
 # TinyML runtimes
 tinyml = [
     "onnxruntime>=1.16",
-    "tflite-runtime>=2.14; platform_machine != 'armv7l'",
+    "tflite-runtime>=2.14; platform_machine != 'armv7l' and python_version < '3.12'",
 ]
 # QEMU (requires system binary)
 qemu = []
