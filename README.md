@@ -65,6 +65,7 @@ embedded-ai-validation-platform/
     ├── sensor_fusion/  # Fusion filters + replay experiments
     ├── datasets/       # Dataset generator, metadata schema, validation
     ├── telemetry/      # Protocol parser, adapters, providers, collector
+    ├── sensors/        # Sensor abstractions and virtual/hardware drivers
     ├── hil/            # Fault models, simulator, HIL suite
     ├── dashboard/      # Typed data layer + Mission Control UI
     └── rt_perf/        # Real-time profiling
@@ -143,6 +144,8 @@ eaiv datasets validate datasets/
 
 # Regression gating
 eaiv baseline save reports/latest.json --name release-1
+eaiv baseline list                      # list all stored baselines
+eaiv baseline show release-1            # print payload for a named baseline
 eaiv compare baselines/release-1.json reports/latest.json --max-regression-pct 10
 
 # Recorded runs
@@ -260,8 +263,8 @@ orientation enables exact RMSE scoring of fusion filters.
 ## Testing
 
 ```bash
-pytest tests/ -v                                   # full suite, hardware-free
-pytest tests/ --cov=src/eaiv --cov-report=html     # with coverage
+python3 -m pytest tests/ -v                         # full suite, hardware-free
+python3 -m pytest tests/ --cov=src/eaiv --cov-report=html # with coverage
 mypy src/eaiv && ruff check . && black --check .   # static checks
 ```
 
