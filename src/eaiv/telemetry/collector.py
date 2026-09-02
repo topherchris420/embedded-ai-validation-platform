@@ -94,10 +94,18 @@ class TelemetryCollector:
         duration = samples[-1].t_s - samples[0].t_s
         rate = (len(samples) - 1) / duration if duration > 0 else 0.0
 
-        names = sorted({name for s in samples for name in s.values})
+        # Accumulate series by field in a single pass to reduce runtime
+        # complexity from O(samples * fields) repeated iterations to O(samples).
+        series_by_name: dict[str, list[float]] = {}
+        for s in samples:
+            for name, val in s.values.items():
+                if name not in series_by_name:
+                    series_by_name[name] = []
+                series_by_name[name].append(val)
+
         stats: dict[str, dict[str, float]] = {}
-        for name in names:
-            series = [s.values[name] for s in samples if name in s.values]
+        for name in sorted(series_by_name.keys()):
+            series = series_by_name[name]
             mean = sum(series) / len(series)
             stats[name] = {
                 "min": min(series),
