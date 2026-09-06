@@ -100,7 +100,7 @@ class RTProfiler:
                 self.target.run_command("RT_PROFILE_STOP")
                 if output.strip():
                     return output
-            except Exception:
+            except Exception:  # noqa: BLE001 - optional target transports expose varied errors
                 log.debug("device RT trace unavailable; using synthetic trace", exc_info=True)
         self.synthetic = True
         return self._synthetic_trace(duration_s)
