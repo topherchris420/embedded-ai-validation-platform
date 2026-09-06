@@ -119,6 +119,8 @@ extend-ignore = [
 "tests/**" = ["S", "BLE", "TRY", "RUF018", "B011"]
 # The Streamlit layer builds HTML from escaped values on purpose.
 "src/eaiv/dashboard/ui/**" = ["S308"]
+# Optional target transports expose varied errors when probing RT tracing.
+"src/eaiv/rt_perf/profiler.py" = ["BLE001"]
 
 [tool.mypy]
 python_version = "3.12"
