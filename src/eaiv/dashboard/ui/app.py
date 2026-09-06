@@ -79,8 +79,14 @@ def _load_plugins() -> None:
 
 def _sidebar() -> str:
     with st.sidebar:
-        st.markdown("### EAIV Mission Control")
-        st.caption("Embedded AI validation")
+        st.markdown(
+            """<div class="eaiv-brand">
+  <div class="eaiv-brand-mark" aria-hidden="true"><span></span></div>
+  <div><strong>EAIV</strong><small>MISSION CONTROL</small></div>
+</div>
+<div class="eaiv-system-state"><span></span> VALIDATION SYSTEM ONLINE</div>""",
+            unsafe_allow_html=True,
+        )
         page = st.radio(
             "Navigation",
             list(PAGES),
@@ -98,9 +104,13 @@ def _sidebar() -> str:
                 clear_caches()
                 st.rerun()
         st.divider()
-        st.caption(
-            "Simulated, mock, and estimated values are labelled wherever they appear. "
-            "Only metrics marked **measured** came from real measurement."
+        st.markdown(
+            """<div class="eaiv-trust-note">
+  <strong>MEASUREMENT TRUST</strong>
+  <p>Simulated, mock, and estimated values are always labelled. Only
+  <b>measured</b> metrics came from physical hardware.</p>
+</div>""",
+            unsafe_allow_html=True,
         )
     return str(page)
 
@@ -117,6 +127,13 @@ def main() -> None:
     _load_plugins()
     page = _sidebar()
     space = workspace()
+    st.markdown(
+        f"""<div class="eaiv-topline">
+  <span>EAIV / {page.upper()}</span>
+  <span class="eaiv-topline-status"><i></i> WORKSPACE READY</span>
+</div>""",
+        unsafe_allow_html=True,
+    )
     try:
         PAGES[page](space)
     except Exception as exc:  # noqa: BLE001 - show the failure, keep the app usable
