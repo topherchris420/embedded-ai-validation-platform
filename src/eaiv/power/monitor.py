@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
+from eaiv.core.metrics import MetricProvenance, MetricSource
 from eaiv.plugins import get_registry, register_plugin
 
 
@@ -39,6 +40,11 @@ class PowerMonitor(ABC):
     USB, ...). ``start()``/``stop()`` bracket the workload; ``stop()``
     returns the trace for the elapsed window.
     """
+
+    @property
+    def measurement_origin(self) -> tuple[MetricProvenance, MetricSource]:
+        """Plugins declare evidence origin; an unknown plugin is never assumed physical."""
+        return MetricProvenance.UNKNOWN, MetricSource.UNKNOWN
 
     @abstractmethod
     def start(self) -> None:
@@ -75,6 +81,10 @@ class SimulatedPowerMonitor(PowerMonitor):
         self.sample_rate_hz = sample_rate_hz
         self._rng = random.Random(seed)
         self._t0: float | None = None
+
+    @property
+    def measurement_origin(self) -> tuple[MetricProvenance, MetricSource]:
+        return MetricProvenance.SIMULATED, MetricSource.SIMULATOR
 
     def start(self) -> None:
         self._t0 = time.perf_counter()

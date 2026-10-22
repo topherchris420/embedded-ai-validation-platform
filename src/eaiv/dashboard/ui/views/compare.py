@@ -9,6 +9,7 @@ change under review.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import pandas as pd
@@ -45,7 +46,11 @@ def _baseline_sources(workspace: Workspace) -> list[ReportSource]:
 
 
 def _delta_chart(changes: list[MetricChange]) -> go.Figure | None:
-    interesting = [c for c in changes if c.change_pct is not None and c.status != "informational"]
+    interesting = [
+        c
+        for c in changes
+        if c.change_pct is not None and math.isfinite(c.change_pct) and c.status != "informational"
+    ]
     interesting.sort(key=lambda c: abs(c.change_pct or 0), reverse=True)
     top = interesting[:18]
     if not top:
@@ -88,7 +93,11 @@ def _changes_frame(changes: list[MetricChange]) -> pd.DataFrame:
                     if c.absolute_change is not None
                     else "—"
                 ),
-                "%": f"{c.change_pct:+.2f}" if c.change_pct is not None else "—",
+                "%": (
+                    f"{c.change_pct:+.2f}"
+                    if c.change_pct is not None and math.isfinite(c.change_pct)
+                    else "n/a (zero baseline)" if c.change_pct is not None else "—"
+                ),
                 "Verdict": c.status,
                 "Direction": c.info.direction_label,
                 "Origin": str(c.info.provenance),
@@ -167,12 +176,19 @@ def render(workspace: Workspace) -> None:
         current_label=current_source.label,
     )
 
+    if comparison.issues:
+        st.error(f"Gate blocked · {len(comparison.issues)} evidence issue(s)")
+        st.dataframe(
+            pd.DataFrame([i.to_dict() for i in comparison.issues]), width="stretch", hide_index=True
+        )
+    elif comparison.passed:
+        st.success("Regression gate passed for the recorded evidence.")
     level = comparison.compatibility.level
     if level is CompatibilityLevel.INCOMPARABLE:
         st.error(f"**{level.label}** — read the differences below before drawing conclusions.")
     elif level is CompatibilityLevel.CAVEATED:
         st.warning(f"**{level.label}**")
-    else:
+    elif not comparison.issues:
         st.success(f"**{level.label}**")
 
     if comparison.compatibility.issues:

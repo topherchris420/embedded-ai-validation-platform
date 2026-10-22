@@ -40,7 +40,8 @@ def test_save_accepts_path(tmp_path):
 def test_list_newest_first_with_metadata(tmp_path):
     store = BaselineStore(tmp_path)
     store.save(_report(1.0), "a")
-    store.save(_report(2.0, passed=False), "b")
+    # Historical failed baselines remain inspectable, but cannot be newly promoted.
+    store.path("b").write_text(json.dumps(_report(2.0, passed=False)))
     infos = store.list()
     assert {i.name for i in infos} == {"a", "b"}
     assert infos[0].target == "sim"

@@ -312,7 +312,10 @@ def baseline_save(report: str, name: str, root: str) -> None:
     """Promote a report JSON to a named baseline."""
     from eaiv.core.baseline import BaselineStore
 
-    path = BaselineStore(root).save(report, name)
+    try:
+        path = BaselineStore(root).save(report, name)
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from None
     click.echo(f"saved baseline {name!r} -> {path}")
 
 
@@ -378,26 +381,44 @@ def datasets_validate(paths: tuple[str, ...]) -> None:
     help="Allowed worsening per metric before the gate fails.",
 )
 @click.option("--verbose", is_flag=True, help="Print every compared metric, not just regressions.")
-def compare(baseline: str, current: str, max_regression_pct: float, verbose: bool) -> None:
-    """Compare two report JSONs and exit non-zero on metric regressions."""
-    from eaiv.core.regression import compare_reports, load_report
+@click.option("--format", "fmt", type=click.Choice(["text", "markdown", "json"]), default="text")
+def compare(
+    baseline: str, current: str, max_regression_pct: float, verbose: bool, fmt: str
+) -> None:
+    """Gate two reports; fail on regressions, lost coverage or invalid evidence."""
+    from eaiv.core.comparison import compare_runs, to_json, to_markdown
+    from eaiv.core.regression import load_report
 
-    report = compare_reports(
-        load_report(baseline), load_report(current), max_regression_pct=max_regression_pct
-    )
-    shown = report.deltas if verbose else report.regressions
-    for d in shown:
-        arrow = {1: "higher-is-better", -1: "lower-is-better", 0: "informational"}[d.direction]
-        flag = "REGRESSED" if d.regressed else "ok"
-        click.echo(
-            f"[{flag:>9}] {d.suite}.{d.metric}: {d.baseline:g} -> {d.current:g} "
-            f"({d.change_pct:+.2f}%, {arrow})"
+    try:
+        comparison = compare_runs(
+            load_report(baseline),
+            load_report(current),
+            max_regression_pct=max_regression_pct,
+            baseline_label=baseline,
+            current_label=current,
         )
-    if report.passed:
-        click.echo(f"no regressions across {len(report.deltas)} shared metrics")
-        sys.exit(0)
-    click.echo(f"{len(report.regressions)} regression(s) beyond {max_regression_pct}%")
-    sys.exit(1)
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from None
+    if fmt == "json":
+        click.echo(to_json(comparison))
+    elif fmt == "markdown":
+        click.echo(to_markdown(comparison))
+    else:
+        shown = comparison.shared if verbose else comparison.regressions
+        for change in shown:
+            flag = "REGRESSED" if change.regressed else change.status
+            click.echo(
+                f"[{flag:>9}] {change.suite}.{change.metric}: {change.baseline:g} -> {change.current:g} ({change.change_pct:+.2f}%)"
+            )
+        for gate_issue in comparison.issues:
+            click.echo(f"[BLOCKED] {gate_issue.code}: {gate_issue.message}")
+        for issue in comparison.compatibility.issues:
+            click.echo(
+                f"[{'BLOCKED' if issue.blocking else 'CAVEAT'}] {issue.field}: {issue.explanation}"
+            )
+        click.echo(comparison.recommendation)
+        click.echo("gate: PASS" if comparison.passed else "gate: FAIL")
+    sys.exit(0 if comparison.passed else 1)
 
 
 # -- runs ------------------------------------------------------------------
@@ -524,15 +545,23 @@ def runs_compare(
             raise click.ClickException(f"Run {run_id!r} has an unreadable report: {e}") from None
         if not isinstance(payload, dict):
             raise click.ClickException(f"Run {run_id!r} report is not a JSON object")
+        manifest = store.load(run_id)
+        if manifest is not None:
+            run_meta = dict(payload.get("run") or {})
+            run_meta["status"] = str(manifest.status)
+            payload["run"] = run_meta
         return payload
 
-    comparison = compare_runs(
-        _load(baseline_run),
-        _load(current_run),
-        max_regression_pct=max_regression_pct,
-        baseline_label=baseline_run,
-        current_label=current_run,
-    )
+    try:
+        comparison = compare_runs(
+            _load(baseline_run),
+            _load(current_run),
+            max_regression_pct=max_regression_pct,
+            baseline_label=baseline_run,
+            current_label=current_run,
+        )
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from None
     if fmt == "markdown":
         click.echo(to_markdown(comparison))
     elif fmt == "json":
@@ -552,8 +581,10 @@ def runs_compare(
                 f"  [REGRESSED] {change.suite}.{change.metric}: "
                 f"{change.baseline:g} -> {change.current:g} ({change.change_pct:+.2f}%)"
             )
+        for gate_issue in comparison.issues:
+            click.echo(f"  [BLOCKED] {gate_issue.code}: {gate_issue.message}")
         click.echo(f"\n{comparison.recommendation}")
-    sys.exit(1 if comparison.regressions or not comparison.compatibility.ok else 0)
+    sys.exit(0 if comparison.passed else 1)
 
 
 # -- config ----------------------------------------------------------------

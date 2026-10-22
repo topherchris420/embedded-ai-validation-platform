@@ -188,8 +188,8 @@ def test_build_ppk2_plugin() -> None:
     assert monitor.vdd_v == 1.8
 
 
-def test_tinyml_benchmark_hardware_provenance() -> None:
-    """Verify TinyMLBenchmark stamps MEASURED and DEVICE provenance for hardware monitors."""
+def test_tinyml_benchmark_mock_transport_provenance() -> None:
+    """A hardware driver over an in-memory bus still produces simulated evidence."""
     target = None
     spec = {
         "runtime": "mock",
@@ -212,9 +212,9 @@ def test_tinyml_benchmark_hardware_provenance() -> None:
 
     # Check metric metadata provenance
     meta = result.metric_meta
-    assert meta["mean_power_mw"]["provenance"] == "measured"
-    assert meta["mean_power_mw"]["source"] == "device"
-    assert meta["peak_power_mw"]["provenance"] == "measured"
-    assert meta["peak_power_mw"]["source"] == "device"
-    assert meta["energy_per_inference_mj"]["provenance"] == "measured"
-    assert meta["energy_per_inference_mj"]["source"] == "device"
+    assert meta["mean_power_mw"]["provenance"] == "simulated"
+    assert meta["mean_power_mw"]["source"] == "simulator"
+    assert meta["peak_power_mw"]["provenance"] == "simulated"
+    assert meta["peak_power_mw"]["source"] == "simulator"
+    assert meta["energy_per_inference_mj"]["provenance"] == "mock"
+    assert meta["energy_per_inference_mj"]["source"] == "host"

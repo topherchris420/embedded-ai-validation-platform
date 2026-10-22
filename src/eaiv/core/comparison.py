@@ -15,10 +15,12 @@ silently averaged into a verdict.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from eaiv.core.evidence import GateIssue, finite_number
 from eaiv.core.metrics import MetricInfo, format_value
 from eaiv.core.regression import MetricDelta, compare_reports
 from eaiv.core.report_schema import metric_info, normalize_report, overall_provenance
@@ -97,7 +99,12 @@ def check_compatibility(baseline: dict[str, Any], current: dict[str, Any]) -> Co
 
     base_target = _target_identity(baseline)
     curr_target = _target_identity(current)
-    if base_target != curr_target:
+    base_identity = (baseline.get("meta") or {}).get("target") or {}
+    curr_identity = (current.get("meta") or {}).get("target") or {}
+    if any(
+        base_identity.get(k) and curr_identity.get(k) and base_identity[k] != curr_identity[k]
+        for k in ("name", "kind", "arch", "clock_hz")
+    ):
         issues.append(
             CompatibilityIssue(
                 "Target",
@@ -111,7 +118,18 @@ def check_compatibility(baseline: dict[str, Any], current: dict[str, Any]) -> Co
 
     base_prov = overall_provenance(baseline)
     curr_prov = overall_provenance(current)
-    if base_prov != curr_prov and "unknown" not in (base_prov, curr_prov):
+    shared_metrics = _numeric_metrics(baseline).keys() & _numeric_metrics(current).keys()
+    provenance_changed = any(
+        metric_info(baseline, suite, metric).provenance
+        != metric_info(current, suite, metric).provenance
+        and "unknown"
+        not in (
+            metric_info(baseline, suite, metric).provenance,
+            metric_info(current, suite, metric).provenance,
+        )
+        for suite, metric in shared_metrics
+    )
+    if provenance_changed:
         issues.append(
             CompatibilityIssue(
                 "Measurement provenance",
@@ -197,8 +215,15 @@ class MetricChange:
             "metric": self.metric,
             "baseline": self.baseline,
             "current": self.current,
-            "absolute_change": self.absolute_change,
-            "change_pct": self.change_pct,
+            "absolute_change": (
+                self.absolute_change if finite_number(self.absolute_change) else None
+            ),
+            "change_pct": (
+                self.change_pct
+                if self.change_pct is not None and math.isfinite(self.change_pct)
+                else None
+            ),
+            "percentage_defined": self.change_pct is not None and math.isfinite(self.change_pct),
             "direction": self.direction,
             "status": self.status,
             "unit": self.info.unit,
@@ -215,6 +240,11 @@ class RunComparison:
     compatibility: Compatibility
     changes: list[MetricChange] = field(default_factory=list)
     max_regression_pct: float = 10.0
+    issues: list[GateIssue] = field(default_factory=list)
+
+    @property
+    def passed(self) -> bool:
+        return self.compatibility.ok and not self.issues and not self.regressions
 
     @property
     def regressions(self) -> list[MetricChange]:
@@ -271,6 +301,8 @@ class RunComparison:
                 "Do not draw conclusions from this pair — "
                 f"{self.compatibility.issues[0].explanation}"
             )
+        if self.issues:
+            return f"Hold the release: {self.issues[0].message}"
         if self.regressions:
             worst = self.regressions[0]
             return (
@@ -309,7 +341,7 @@ def _numeric_metrics(report: dict[str, Any]) -> dict[tuple[str, str], float]:
             continue
         suite = str(entry.get("name", "?"))
         for metric, value in (entry.get("metrics") or {}).items():
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
+            if not finite_number(value):
                 continue
             out[(suite, str(metric))] = float(value)
     return out
@@ -324,10 +356,30 @@ def compare_runs(
     current_label: str = "current",
 ) -> RunComparison:
     """Full comparison: compatibility, deltas, and metrics that appeared or vanished."""
-    base = normalize_report(baseline)
-    curr = normalize_report(current)
+    regression = compare_reports(baseline, current, max_regression_pct=max_regression_pct)
+    try:
+        base = normalize_report(baseline)
+        curr = normalize_report(current)
+    except ValueError:
+        return RunComparison(
+            baseline_label,
+            current_label,
+            Compatibility(
+                CompatibilityLevel.INCOMPARABLE,
+                [
+                    CompatibilityIssue(
+                        "Report integrity",
+                        "baseline",
+                        "current",
+                        "One report is malformed; repair it before comparing.",
+                        True,
+                    )
+                ],
+            ),
+            max_regression_pct=max_regression_pct,
+            issues=regression.issues,
+        )
     compatibility = check_compatibility(base, curr)
-    regression = compare_reports(base, curr, max_regression_pct=max_regression_pct)
 
     changes: list[MetricChange] = []
     for delta in regression.deltas:
@@ -370,6 +422,7 @@ def compare_runs(
         compatibility=compatibility,
         changes=changes,
         max_regression_pct=max_regression_pct,
+        issues=regression.issues,
     )
 
 
@@ -401,6 +454,10 @@ def to_markdown(comparison: RunComparison) -> str:
             )
         lines.append("")
 
+    if comparison.issues:
+        lines += ["## Gate blockers", ""]
+        lines += [f"- **{i.code}**: {i.message}" for i in comparison.issues]
+        lines.append("")
     counts = comparison.counts
     lines += [
         "## Summary",
@@ -433,7 +490,11 @@ def to_markdown(comparison: RunComparison) -> str:
                 if change.absolute_change is not None
                 else "—"
             )
-            pct_text = f"{change.change_pct:+.2f}%" if change.change_pct is not None else "—"
+            pct_text = (
+                f"{change.change_pct:+.2f}%"
+                if change.change_pct is not None and math.isfinite(change.change_pct)
+                else "n/a (zero baseline)" if change.change_pct is not None else "—"
+            )
             lines.append(
                 f"| {change.metric} | {base_text} | {curr_text} | {abs_text} | "
                 f"{pct_text} | {change.status} |"
@@ -449,11 +510,13 @@ def to_json(comparison: RunComparison) -> str:
         "current": comparison.current_label,
         "max_regression_pct": comparison.max_regression_pct,
         "compatibility": comparison.compatibility.to_dict(),
+        "passed": comparison.passed,
+        "issues": [i.to_dict() for i in comparison.issues],
         "recommendation": comparison.recommendation,
         "counts": comparison.counts,
         "changes": [c.to_dict() for c in comparison.changes],
     }
-    return json.dumps(payload, indent=2)
+    return json.dumps(payload, indent=2, allow_nan=False)
 
 
 __all__ = [

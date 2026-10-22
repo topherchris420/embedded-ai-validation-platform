@@ -13,6 +13,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from eaiv.core.metrics import MetricProvenance, MetricSource
 from eaiv.plugins import get_registry, register_plugin
 from eaiv.power.monitor import PowerMonitor, PowerTrace
 
@@ -173,6 +174,12 @@ class PPK2PowerMonitor(PowerMonitor):
 
         self.transport.write(b"STOP_MEAS\n")
 
+    @property
+    def measurement_origin(self) -> tuple[MetricProvenance, MetricSource]:
+        if isinstance(self.transport, MockPPK2Serial):
+            return MetricProvenance.SIMULATED, MetricSource.SIMULATOR
+        return MetricProvenance.MEASURED, MetricSource.DEVICE
+
     def start(self) -> None:
         """Begin high-speed power capture window."""
         self._samples = []
@@ -196,9 +203,8 @@ class PPK2PowerMonitor(PowerMonitor):
         self._t0 = None
 
         samples = list(self._samples)
-        if not samples:
-            # Fallback if window was instantaneous: estimate nominal power
-            samples = [self.vdd_v * 10.0]
+        # No samples means no evidence. The benchmark will fail this
+        # capture instead of substituting a nominal current reading.
 
         return PowerTrace(duration_s=duration, samples_mw=samples)
 

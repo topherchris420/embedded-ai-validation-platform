@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from eaiv.core.evidence import report_issues
 from eaiv.core.report_schema import load_report_file, normalize_report, overall_provenance
 from eaiv.runs.models import RunManifest, RunStatus
 from eaiv.runs.store import RunStore
@@ -43,12 +44,17 @@ class ReportSource:
                 self._report = load_report_file(self.path)
             except (OSError, ValueError):
                 return None
+        if self.manifest is not None:
+            self._report["run"] = {
+                **self._report.get("run", {}),
+                "status": str(self.manifest.status),
+            }
         return self._report
 
     @property
     def passed(self) -> bool | None:
         report = self.report()
-        return None if report is None else bool(report.get("all_passed"))
+        return None if report is None else not report_issues(report)
 
     @property
     def provenance(self) -> str:
@@ -111,7 +117,10 @@ def legacy_sources(report_dir: str | Path) -> list[ReportSource]:
             continue
         if not isinstance(payload, dict) or "suites" not in payload:
             continue
-        report = normalize_report(payload)
+        try:
+            report = normalize_report(payload)
+        except ValueError:
+            continue
         report["source_file"] = str(path)
         target = (report.get("meta") or {}).get("target") or {}
         timestamp = str(report.get("timestamp", ""))

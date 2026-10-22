@@ -8,7 +8,9 @@ them for display).
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+
+from eaiv.core.evidence import report_issues
 
 
 @dataclass
@@ -36,7 +38,7 @@ class AggregateResult:
         self.suites.append(r)
 
     def all_passed(self) -> bool:
-        return all(s.passed for s in self.suites)
+        return not report_issues({"suites": [asdict(s) for s in self.suites]})
 
     def __iter__(self) -> Iterator[SuiteResult]:
         return iter(self.suites)

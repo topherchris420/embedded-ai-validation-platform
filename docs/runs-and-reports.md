@@ -186,13 +186,13 @@ cancelled run records `cancel_reason`, marks every unreached stage
 
 ## Backward compatibility
 
-Everything below is unchanged by the run model:
+The run model preserves the following interfaces:
 
 - `reports/latest.json`, `reports/report_<timestamp>.json`, and
   `reports/report.{csv,md,html}` are still written to the same paths with
   the same top-level keys. The CSV keeps its original leading columns
   (`suite,metric,value,passed`) and appends `unit,provenance`.
-- `eaiv run` behaves exactly as before and does **not** create a run
+- `eaiv run` writes report artifacts and does **not** create a run
   directory. `eaiv pipeline` records runs; pass `--no-record` to opt out.
 - `ValidationPipeline` and `Orchestrator` work with no session, sink, or
   store — that is the default, and it is the pre-existing behaviour.
@@ -227,3 +227,16 @@ from eaiv.dashboard.runs import all_sources
 for source in all_sources(RunStore("reports"), "reports"):
     print(source.kind, source.label, source.provenance, source.passed)
 ```
+
+## Evidence gate behavior
+
+Comparisons and baseline promotion validate the original report before
+normalization. Suite verdicts must be actual booleans; duplicate suite names
+and non-finite values cannot disappear into a normalized passing result.
+Recorded-run views include manifest status, so a passing report from a failed
+or interrupted pipeline remains blocked.
+
+`eaiv compare` and `eaiv runs compare` expose the same structured blockers.
+Their JSON exports use standard JSON numbers: a percentage from a zero
+baseline is `null`, with `percentage_defined: false`; the directional verdict
+is still evaluated. See [evidence-gates.md](evidence-gates.md) for details.

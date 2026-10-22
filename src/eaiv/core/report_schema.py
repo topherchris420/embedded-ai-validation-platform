@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from eaiv.core.evidence import report_issues
 from eaiv.core.metrics import MetricInfo, MetricProvenance, infer_metric_info
 
 #: Current on-disk report schema.
@@ -53,6 +54,20 @@ def normalize_report(payload: dict[str, Any]) -> dict[str, Any]:
     if not is_report(payload):
         raise ValueError("Not a validation report: missing a 'suites' list")
 
+    structural = [
+        i
+        for i in report_issues(payload)
+        if i.code
+        in {
+            "invalid-report",
+            "invalid-suite",
+            "invalid-metrics",
+            "invalid-metadata",
+            "invalid-direction",
+        }
+    ]
+    if structural:
+        raise ValueError(structural[0].message)
     version = report_schema_version(payload)
     normalized: dict[str, Any] = dict(payload)
     normalized["schema_version"] = max(version, LEGACY_SCHEMA_VERSION)
@@ -76,7 +91,7 @@ def normalize_report(payload: dict[str, Any]) -> dict[str, Any]:
             continue
         suite = dict(entry)
         suite.setdefault("name", "?")
-        suite["passed"] = bool(suite.get("passed"))
+        suite["passed"] = suite.get("passed") is True
         metrics = suite.get("metrics")
         suite["metrics"] = dict(metrics) if isinstance(metrics, dict) else {}
         suite["notes"] = str(suite.get("notes", ""))
@@ -87,7 +102,7 @@ def normalize_report(payload: dict[str, Any]) -> dict[str, Any]:
 
     normalized.setdefault("timestamp", "")
     normalized["all_passed"] = bool(
-        payload.get("all_passed", all(s["passed"] for s in suites) if suites else False)
+        payload.get("all_passed", all(s["passed"] for s in suites) if suites else False) is True
     )
     run = payload.get("run")
     normalized["run"] = dict(run) if isinstance(run, dict) else {}

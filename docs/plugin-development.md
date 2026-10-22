@@ -12,7 +12,7 @@ of the type's interface. Core code never needs modification.
 | `target` | `eaiv.plugins.targets.Target` | `qemu`, `serial`, `jlink`, `sim` | `target.kind` |
 | `fusion_filter` | `update(dt, gyro, accel) -> Orientation` | `complementary`, `mahony`, `madgwick`, `kalman`, `ekf` | `sensor_fusion.algorithm` |
 | `fault` | `eaiv.hil.Fault` | `noise`, `packet_loss`, `jitter`, `outage` | `hil.faults[].kind` |
-| `power_monitor` | `eaiv.power.PowerMonitor` | `sim` | `tinyml.power.kind` |
+| `power_monitor` | `eaiv.power.PowerMonitor` | `sim`, `ina226`, `ppk2` | `tinyml.power.kind` |
 | `telemetry_adapter` | `eaiv.telemetry.TelemetryAdapter` | `eaiv-line` | `eaiv monitor --adapter` |
 | `suite` | `run() -> SuiteResult` | (none built-in) | `extra_suites.<name>` |
 | `sensor` | `eaiv.plugins.sensors.Sensor` | (bases only) | — |
@@ -78,6 +78,20 @@ my_board = "my_pkg.eaiv_plugins"
 
 The CLI calls `eaiv.plugins.load_entry_point_plugins()` before resolving
 names, so `pip install my-pkg` is all a user needs.
+
+## Power Monitor provenance
+
+A monitor exposes `measurement_origin`, a property returning
+`tuple[MetricProvenance, MetricSource]`. The base implementation returns
+`UNKNOWN, UNKNOWN`. Override it using the actual transport: a physical
+instrument can return `MEASURED, DEVICE`; an in-memory bus or synthetic
+transport must return `SIMULATED, SIMULATOR`. The plugin name alone does not
+establish provenance.
+
+`stop()` must return the samples actually captured. An empty trace fails the
+TinyML benchmark; do not insert a nominal current reading when no data arrives.
+The workload always stops a successfully started monitor, including when an
+inference raises. Mock-workload energy remains mock regardless of the monitor.
 
 ## Declaring metric provenance
 

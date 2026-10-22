@@ -14,6 +14,7 @@ metric name, and is marked as such.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -125,6 +126,8 @@ class MetricInfo:
         try:
             direction = int(payload["direction"]) if "direction" in payload else inferred.direction
         except (TypeError, ValueError):
+            direction = inferred.direction
+        if direction not in (-1, 0, 1):
             direction = inferred.direction
         return cls(
             name=name,
@@ -279,7 +282,9 @@ def dataset_provenance(path: str | Path) -> tuple[MetricProvenance, MetricSource
         meta = read_metadata(path)
     except Exception:  # noqa: BLE001 - a missing/broken sidecar is not fatal
         return MetricProvenance.UNKNOWN, MetricSource.DATASET
-    if meta is not None and meta.generator:
+    if meta is None:
+        return MetricProvenance.UNKNOWN, MetricSource.DATASET
+    if meta.generator:
         return MetricProvenance.SIMULATED, MetricSource.DATASET
     return MetricProvenance.MEASURED, MetricSource.DATASET
 
@@ -294,6 +299,8 @@ def format_value(value: Any, info: MetricInfo | None = None) -> str:
     if isinstance(value, bool):
         return "yes" if value else "no"
     if isinstance(value, (int, float)):
+        if not math.isfinite(value):
+            return f"{value} (invalid)"
         magnitude = abs(float(value))
         if isinstance(value, int):
             text = f"{int(value):,}"

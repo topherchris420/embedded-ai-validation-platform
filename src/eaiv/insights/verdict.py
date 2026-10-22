@@ -12,7 +12,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from eaiv.core.report_schema import overall_provenance
+from eaiv.core.evidence import report_issues
+from eaiv.core.metrics import MetricProvenance, MetricSource
+from eaiv.core.report_schema import metric_info, overall_provenance
 from eaiv.insights.models import Severity, ValidationInsight
 
 
@@ -26,7 +28,7 @@ class Verdict(StrEnum):
     def label(self) -> str:
         return {
             Verdict.SHIP: "Ready to ship",
-            Verdict.SHIP_WITH_RISK: "Ship with known risk",
+            Verdict.SHIP_WITH_RISK: "Further validation required",
             Verdict.DO_NOT_SHIP: "Not ready to ship",
             Verdict.UNKNOWN: "No validation data",
         }[self]
@@ -73,7 +75,17 @@ def decide(
             ["Run a validation mission to get a release verdict."],
         )
 
-    insights = insights or []
+    integrity = report_issues(report)
+    if any(i.code not in {"suite-failed", "report-failed"} for i in integrity):
+        return ReleaseDecision(
+            Verdict.DO_NOT_SHIP,
+            "Validation evidence is incomplete or invalid",
+            [i.message for i in integrity],
+        )
+    if insights is None:
+        from eaiv.insights.engine import generate_insights
+
+        insights = generate_insights(report)
     blockers = [i for i in insights if i.severity in (Severity.CRITICAL, Severity.HIGH)]
     risks = [i for i in insights if i.severity is Severity.MEDIUM]
 
@@ -86,6 +98,13 @@ def decide(
         if failed:
             reasons.append(f"Failing suites: {', '.join(failed)}")
         return ReleaseDecision(Verdict.DO_NOT_SHIP, blockers[0].title, reasons, blockers, risks)
+
+    if integrity:
+        return ReleaseDecision(
+            Verdict.DO_NOT_SHIP,
+            "Validation evidence is incomplete or invalid",
+            [i.message for i in integrity],
+        )
 
     if failed:
         reasons.append(f"Failing suites: {', '.join(failed)}")
@@ -110,7 +129,39 @@ def decide(
             reasons.append(f"{len(risks)} open risk(s): {risks[0].title}")
         return ReleaseDecision(
             Verdict.SHIP_WITH_RISK,
-            "Passed in simulation — hardware validation still required",
+            (
+                "Passed in simulation — hardware validation still required"
+                if provenance == "simulated"
+                else "Incomplete device evidence — hardware validation still required"
+            ),
+            reasons,
+            blockers,
+            risks,
+        )
+
+    non_device = [
+        f"{suite['name']}.{name}"
+        for suite in report.get("suites", [])
+        for name, value in suite.get("metrics", {}).items()
+        if isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and (
+            metric_info(report, suite["name"], name).source is not MetricSource.DEVICE
+            or metric_info(report, suite["name"], name).provenance is not MetricProvenance.MEASURED
+        )
+    ]
+    skipped = [s["name"] for s in report.get("suites", []) if s.get("metrics", {}).get("skipped")]
+    if non_device or skipped:
+        if non_device:
+            reasons.append(
+                "Host, dataset, or unspecified measurements do not validate execution on the target device: "
+                + ", ".join(non_device)
+            )
+        if skipped:
+            reasons.append("Skipped suites: " + ", ".join(skipped))
+        return ReleaseDecision(
+            Verdict.SHIP_WITH_RISK,
+            "Target-device validation still required",
             reasons,
             blockers,
             risks,
@@ -120,7 +171,9 @@ def decide(
         reasons.append(f"{len(risks)} open risk(s): {risks[0].title}")
         return ReleaseDecision(Verdict.SHIP_WITH_RISK, risks[0].title, reasons, blockers, risks)
 
-    reasons.append("Every suite passed on measured hardware data with no open risks.")
+    reasons.append(
+        "The executed suites passed on measured target-device data with no open risks. This verdict covers only the recorded workload and thresholds."
+    )
     return ReleaseDecision(Verdict.SHIP, "All gates green", reasons, blockers, risks)
 
 

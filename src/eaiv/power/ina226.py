@@ -11,8 +11,9 @@ import threading
 import time
 from typing import Any
 
+from eaiv.core.metrics import MetricProvenance, MetricSource
 from eaiv.plugins import get_registry, register_plugin
-from eaiv.power.i2c import I2CBus, build_i2c_bus
+from eaiv.power.i2c import I2CBus, MockI2CBus, build_i2c_bus
 from eaiv.power.monitor import PowerMonitor, PowerTrace
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,12 @@ class INA226PowerMonitor(PowerMonitor):
             sleep_time = interval - dt
             if sleep_time > 0:
                 time.sleep(sleep_time)
+
+    @property
+    def measurement_origin(self) -> tuple[MetricProvenance, MetricSource]:
+        if isinstance(self.bus, MockI2CBus):
+            return MetricProvenance.SIMULATED, MetricSource.SIMULATOR
+        return MetricProvenance.MEASURED, MetricSource.DEVICE
 
     def start(self) -> None:
         """Begin continuous power sampling window."""

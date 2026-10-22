@@ -1,4 +1,4 @@
-"""On-device (or on-host, via QEMU/serial passthrough) TinyML benchmarking."""
+"""Host-side TinyML benchmarking with explicit measurement provenance."""
 
 from __future__ import annotations
 
@@ -25,6 +25,10 @@ class TinyMLBenchmark:
         model_path = self.spec.get("model", "")
         iterations = int(self.spec.get("iterations", 50))
         warmup = int(self.spec.get("warmup", 5))
+        if iterations <= 0 or warmup < 0:
+            return SuiteResult(
+                "tinyml", False, notes="iterations must be positive and warmup non-negative"
+            )
 
         # Startup: cold model load through first inference (time-to-first-
         # inference), measured before the timed loop touches the runtime.
@@ -39,17 +43,38 @@ class TinyMLBenchmark:
             )
         startup_ms = (time.perf_counter() - t_start) * 1000.0
 
-        monitor = self._build_monitor()
-        if monitor is not None:
-            monitor.start()
-
+        monitor = None
+        trace = None
+        started = False
+        failure = ""
         stats = LatencyStats()
-        for i in range(warmup + iterations):
-            t0 = time.perf_counter()
-            self._invoke(runtime, meta, x)
-            dt = time.perf_counter() - t0
-            if i >= warmup:
-                stats.add(dt)
+        try:
+            monitor = self._build_monitor()
+            if monitor is not None:
+                monitor.start()
+                started = True
+            for i in range(warmup + iterations):
+                t0 = time.perf_counter()
+                self._invoke(runtime, meta, x)
+                dt = time.perf_counter() - t0
+                if i >= warmup:
+                    stats.add(dt)
+        except Exception as exc:  # noqa: BLE001 - plugin failures become suite results
+            failure = f"benchmark workload failed: {exc}"
+        finally:
+            if started and monitor is not None:
+                try:
+                    trace = monitor.stop()
+                except Exception as exc:  # noqa: BLE001 - retain both workload and capture failures
+                    failure = "; ".join(filter(None, [failure, f"power capture failed: {exc}"]))
+        if failure:
+            return SuiteResult("tinyml", False, notes=failure)
+        if trace is not None and not trace.samples_mw:
+            return SuiteResult(
+                "tinyml",
+                False,
+                notes="power capture produced no samples; increase the workload duration or check the monitor",
+            )
 
         macs = estimate_macs(meta.input_shape, meta.output_shape)
         summary = stats.summary()
@@ -69,8 +94,7 @@ class TinyMLBenchmark:
         if arena_kb is not None:
             summary["tensor_arena_est_kb"] = arena_kb
 
-        if monitor is not None:
-            trace = monitor.stop()
+        if trace is not None:
             total_inferences = warmup + iterations
             summary.update(
                 {
@@ -96,10 +120,12 @@ class TinyMLBenchmark:
                     else " (host runtime, not on-device)"
                 )
             ),
-            metric_meta=self._metric_meta(summary, meta),
+            metric_meta=self._metric_meta(summary, meta, monitor),
         )
 
-    def _metric_meta(self, summary: dict, meta: ModelMeta) -> dict:
+    def _metric_meta(
+        self, summary: dict, meta: ModelMeta, monitor: PowerMonitor | None = None
+    ) -> dict:
         """Declare where each benchmark number came from.
 
         Timings are host-side even for a real runtime — this suite runs
@@ -126,15 +152,17 @@ class TinyMLBenchmark:
                 MetricProvenance.MEASURED,
                 MetricSource.STATIC_ANALYSIS,
             )
-        power_spec = self.spec.get("power") or {}
-        power_kind = str(power_spec.get("kind", "")).lower()
         power_origin = (
-            (MetricProvenance.SIMULATED, MetricSource.SIMULATOR)
-            if power_kind in ("", "sim")
-            else (MetricProvenance.MEASURED, MetricSource.DEVICE)
+            monitor.measurement_origin
+            if monitor is not None
+            else (MetricProvenance.UNKNOWN, MetricSource.UNKNOWN)
         )
         for key in ("mean_power_mw", "peak_power_mw", "energy_per_inference_mj"):
             overrides[key] = power_origin
+        if provenance is MetricProvenance.MOCK:
+            # Energy per inference divides by a stand-in workload's count and
+            # host timing, even when the power monitor itself is physical.
+            overrides["energy_per_inference_mj"] = (MetricProvenance.MOCK, source)
         return metric_meta(summary, provenance, source, overrides)
 
     def _build_monitor(self) -> PowerMonitor | None:

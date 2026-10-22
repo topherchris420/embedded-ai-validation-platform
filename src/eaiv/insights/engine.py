@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from eaiv.core.metrics import MetricProvenance, format_value
+from eaiv.core.evidence import report_issues
+from eaiv.core.metrics import MetricProvenance, MetricSource, format_value
 from eaiv.core.regression import RegressionReport
 from eaiv.core.report_schema import metric_info, normalize_report, overall_provenance
 from eaiv.insights.models import (
@@ -686,7 +687,30 @@ def _provenance_insights(report: dict[str, Any]) -> list[ValidationInsight]:
     """State plainly when the numbers did not come from hardware."""
     provenance = overall_provenance(report)
     if provenance == "measured":
-        return []
+        non_device = [
+            f"{entry['name']}.{metric}"
+            for entry in report.get("suites", [])
+            for metric, value in entry.get("metrics", {}).items()
+            if isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and metric_info(report, entry["name"], metric).source is not MetricSource.DEVICE
+        ]
+        if not non_device:
+            return []
+        return [
+            ValidationInsight(
+                id="provenance-not-device",
+                severity=Severity.MEDIUM,
+                category=InsightCategory.PROVENANCE,
+                title="Measured values do not establish target-device performance",
+                impact="Host execution and dataset replay cannot certify inference timing or power on the target device.",
+                evidence=(Evidence("Metrics outside the target", ", ".join(non_device)),),
+                action=RecommendedAction(
+                    summary="Capture the workload on the target device before approving hardware readiness."
+                ),
+                provenance=provenance,
+            )
+        ]
     if provenance == "unknown":
         return [
             ValidationInsight(
@@ -810,6 +834,28 @@ def generate_insights(
     legacy artifact yields the same insight types with whatever evidence
     it actually recorded.
     """
+    integrity = [
+        i
+        for i in report_issues(report)
+        if i.code not in {"empty-report", "suite-failed", "report-failed"}
+    ]
+    if integrity:
+        return sort_insights(
+            [
+                *_execution_insights(manifest),
+                ValidationInsight(
+                    id="evidence-invalid",
+                    severity=Severity.CRITICAL,
+                    category=InsightCategory.EXECUTION,
+                    title="Validation evidence is incomplete or invalid",
+                    impact="Invalid evidence cannot establish a passing release gate.",
+                    evidence=tuple(Evidence(i.code, i.message) for i in integrity),
+                    action=RecommendedAction(
+                        summary="Repair the report producer and rerun validation; do not discard the missing evidence."
+                    ),
+                ),
+            ]
+        )
     normalized = normalize_report(report)
     insights: list[ValidationInsight] = []
     insights += _execution_insights(manifest)
@@ -817,6 +863,20 @@ def generate_insights(
     insights += _deadline_insights(normalized)
     insights += _budget_insights(normalized)
     insights += _regression_insights(normalized, regression, baseline_name)
+    if regression is not None and regression.issues:
+        insights.append(
+            ValidationInsight(
+                id="comparison-evidence-blocked",
+                severity=Severity.HIGH,
+                category=InsightCategory.REGRESSION,
+                title="Baseline comparison lacks valid matching evidence",
+                impact="No clean regression result can be established until these evidence gaps are resolved.",
+                evidence=tuple(Evidence(i.code, i.message) for i in regression.issues),
+                action=RecommendedAction(
+                    summary="Restore the baseline coverage and measurement definitions, then rerun."
+                ),
+            )
+        )
     insights += _accuracy_insights(normalized)
     insights += _suite_failure_insights(normalized)
     insights += _unexplained_failure_insights(normalized, insights)

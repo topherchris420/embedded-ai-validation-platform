@@ -92,11 +92,24 @@ eaiv pipeline --config benchmarks/suites/inference-sim.yaml \
     --suite tinyml --baseline release-0.4-esp32 --max-regression-pct 10
 ```
 
-Direction is inferred per metric (latency/error/memory lower-is-better,
-fps/accuracy higher-is-better, unknown metrics never gate). The exit code
-is the gate; the Markdown report in the CI job summary is the explanation.
-Keep one baseline per board per release — comparing across boards is the
-dashboard's job, not the gate's.
+Explicit metric direction takes precedence; otherwise names supply the
+legacy inference (latency/error/memory lower-is-better, fps/accuracy
+higher-is-better). Unknown directions and mock values remain informational.
+Missing baseline metrics, failed suites, non-finite values, and incompatible
+measurement definitions block the gate independently of numeric regressions.
+Keep one baseline per target and workload.
+
+Use `eaiv compare baseline.json candidate.json --format markdown` for a
+reviewable explanation, or `--format json` for machine-readable `passed`,
+`issues`, compatibility notes, and deltas. The process exits nonzero when
+the gate fails. See [evidence-gates.md](evidence-gates.md).
+
+Power capture brackets warmup and timed inference only; output-stability
+checks run after capture stops. A failed inference always stops a started
+monitor. Empty captures fail the suite instead of becoming zero-energy
+results. Energy from a mock runtime remains mock even if its Power Monitor
+is physical. Hardware drivers using mock buses/transports declare simulated
+power readings; an external monitor plugin must declare its origin explicitly.
 
 ## Adding a benchmark
 

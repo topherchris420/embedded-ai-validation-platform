@@ -17,7 +17,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from eaiv.core.evidence import report_issues
 from eaiv.core.regression import load_report
+from eaiv.runs.store import atomic_write_text
 
 
 @dataclass(frozen=True)
@@ -46,15 +48,16 @@ class BaselineStore:
     def save(self, report: dict | str | Path, name: str) -> Path:
         """Promote a report (payload or path to one) to a named baseline."""
         payload = dict(report) if isinstance(report, dict) else load_report(report)
-        if "suites" not in payload:
-            raise ValueError("Not a report payload: missing 'suites'")
+        issues = report_issues(payload)
+        if issues:
+            raise ValueError("Cannot promote this report: " + "; ".join(i.message for i in issues))
         payload["_baseline"] = {
             "name": name,
             "saved_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         path = self.path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload, indent=2))
+        atomic_write_text(path, json.dumps(payload, indent=2, allow_nan=False))
         return path
 
     def load(self, name: str) -> dict:

@@ -376,6 +376,10 @@ class ValidationPipeline:
             f"{counts['regressed']} regressed, {counts['improved']} improved vs {baseline!r}",
             **counts,
         )
+        if result.regression.issues:
+            raise RuntimeError(
+                "Comparison blocked: " + "; ".join(i.message for i in result.regression.issues)
+            )
         if not result.regression.passed:
             worst = result.regression.regressions[0]
             raise RuntimeError(
@@ -445,7 +449,7 @@ def _hint_for(exc: BaseException, stage: str) -> str:
     if isinstance(exc, TimeoutError):
         return "Increase the stage timeout or check that the target is responding."
     if stage == "compare":
-        return "Inspect the regression on the Compare page, or raise --max-regression-pct."
+        return "Inspect the evidence and regressions on the Compare page; restore missing coverage before retrying."
     if stage == "save_baseline":
         return "Baselines are only promoted from fully passing runs; fix the failures first."
     if stage == "validate":

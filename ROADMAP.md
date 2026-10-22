@@ -4,6 +4,18 @@ The goal: the open-source reference implementation for embedded AI
 validation — pytest + PlatformIO + MLPerf Tiny + hardware telemetry for
 resource-constrained devices.
 
+## Evidence integrity update
+
+- Fail-closed regression gates for failed reports, missing metrics/suites,
+  invalid numbers, duplicate names, and changed metric definitions
+- Declared metric direction respected; signed zero-baseline comparisons and
+  strict JSON exports with explicit gate blockers
+- Atomic baseline promotion that refuses failed or malformed evidence
+- Target-device readiness distinguished from host measurements; unknown
+  dataset origins and simulated hardware transports labelled honestly
+- Bounded TinyML power capture, cleanup on workload failure, and refusal
+  to invent readings when a capture contains no samples
+
 ## Done (v0.4)
 
 **Validation workflow**

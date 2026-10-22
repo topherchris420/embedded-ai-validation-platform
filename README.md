@@ -1,6 +1,14 @@
 # Embedded AI Validation Platform
 
-This brings the rigor of software testing and continuous integration to the physical world of edge AI. It enables engineers to stress-test, profile, and validate TinyML models across hardware constraints, sensor variability, and real-world conditions before they reach production devices.
+**Know what your embedded AI has actually proven.**
+
+EAIV turns firmware tests, TinyML benchmarks, sensor replays, power traces,
+and timing budgets into an auditable validation history. Run a mission,
+inspect the evidence, compare it with a known-good baseline, and see exactly
+what blocks the next release.
+
+Built by [Vers3Dynamics](https://vers3dynamics.com). Open source, hardware-aware,
+and runnable entirely in simulation.
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![Typed](https://img.shields.io/badge/mypy-checked-blue)
@@ -23,17 +31,37 @@ target to deciding whether to ship.*
 | Firmware testing | Flash, boot, and pattern-match firmware over serial, J-Link, QEMU, or an in-process simulated device |
 | TinyML benchmarking | Latency distribution (p50/p90/p95/p99), throughput, startup time, output stability, model size, MAC estimate for `.tflite`/`.onnx` (mock fallback for dry runs) |
 | Memory analysis | Static ELF ROM/RAM footprint, model flash cost, TFLite tensor-memory floor, budget gates |
-| Power measurement | Mean/peak draw and energy per inference through the `power_monitor` plugin interface (simulated monitor included; INA226/PPK2 planned) |
+| Power measurement | Mean/peak draw and energy per inference through the `power_monitor` plugin interface (simulated monitor plus INA226/PPK2 drivers; mock transports explicitly labelled) |
 | Sensor fusion | Complementary, Mahony, Madgwick, 1-D Kalman, and 4-state EKF filters scored against ground-truth replay datasets (RMSE, drift) |
 | Real-time profiling | WCET, jitter, and deadline-miss analysis from task telemetry |
 | Hardware-in-the-loop | Deterministic fault injection (Gaussian noise, packet loss, timing jitter, sensor outages) over replayed or synthetic sensor streams |
 | Telemetry | Typed serial protocol, per-board adapter plugins, capture to CSV, per-field statistics, sampling-rate and gap analysis |
-| Regression gating | Named baselines, direction-aware metric comparison, CI exit codes (`eaiv compare`, `eaiv pipeline`) |
+| Evidence gates | Direction-aware comparisons that block failed suites, lost coverage, invalid numbers, target changes, and changed metric definitions; actionable CLI/dashboard explanations |
 | Validation runs | Every run recorded with a manifest, event log, artifacts, and the resolved config that produced it; interrupted runs are detected, not left "running" |
 | Diagnosis | Deterministic insight engine: evidence-backed findings with impact, confidence, and the next action — ordered by an explicit priority table |
 | Measurement provenance | Every metric labelled measured, simulated, estimated, or mock, with its source (device, host, simulator, static analysis, dataset) |
 | Release decision | Compatibility-checked run comparison (target, provenance, input hashes, suite coverage) with a recommendation and Markdown/JSON export |
 | Mission Control | Guided Streamlit workflow: build a mission, launch it, watch it live, read the diagnosis, compare, promote a baseline |
+
+## What a green gate means
+
+A comparison passes only when the reports contain valid shared evidence,
+the candidate preserves baseline coverage, and no eligible metric worsens
+beyond the allowance. Each blocker names the affected suite or metric.
+
+- **Missing is a failure:** removing a slow metric or skipping a previously
+  executed suite cannot make a candidate look better.
+- **Definitions travel with measurements:** declared units, directions,
+  provenance, and sources must agree. Legacy reports remain readable.
+- **Promotion preserves trust:** failed or malformed reports cannot replace
+  a baseline; accepted snapshots are written atomically.
+- **Device readiness needs device evidence:** host timings, mock transports,
+  synthetic datasets, and unknown origins remain explicit. A passing
+  simulation does not establish hardware readiness.
+
+The verdict covers the executed workload and configured thresholds. It is
+not a certification or a guarantee outside that scope. See the
+[evidence-gate contract](docs/evidence-gates.md) for exact behavior and CI examples.
 
 ## Repository layout
 
@@ -147,6 +175,8 @@ eaiv baseline save reports/latest.json --name release-1
 eaiv baseline list                      # list all stored baselines
 eaiv baseline show release-1            # print payload for a named baseline
 eaiv compare baselines/release-1.json reports/latest.json --max-regression-pct 10
+eaiv compare baselines/release-1.json reports/latest.json --format json
+eaiv compare baselines/release-1.json reports/latest.json --format markdown
 
 # Recorded runs
 eaiv runs list                          # every recorded run, newest first
@@ -215,7 +245,8 @@ metric declares whether it was `measured`, `simulated`, `estimated`, or
 `mock`, and where it came from. TinyML timings are host-side even with a
 real runtime; QEMU counts as simulated because an emulator models timing
 rather than exhibiting it; the RT profiler labels its synthetic-trace
-fallback. Metrics labelled `mock` are reported but never gate a release.
+fallback. Metrics labelled `mock` on either side are informational. A change in declared
+provenance still blocks comparison; mock workload energy is also labelled `mock`.
 
 Metric definitions and reproducibility rules:
 [docs/benchmarking.md](docs/benchmarking.md). Schema, storage, and
@@ -294,6 +325,7 @@ GitHub Actions workflows run on every push and pull request:
 - [Getting Started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
 - [Runs, Reports, and Events](docs/runs-and-reports.md)
+- [Evidence Gates and CI Exports](docs/evidence-gates.md)
 - [Benchmarking Guide](docs/benchmarking.md)
 - [Usage Guide](docs/usage.md)
 - [Configuration Reference](docs/config-reference.md)
