@@ -18,6 +18,7 @@ import streamlit as st
 from eaiv.core.metrics import format_value
 from eaiv.core.regression import compare_reports
 from eaiv.core.report_schema import metric_info
+from eaiv.dashboard.authorship import authorship_summary, input_rows
 from eaiv.dashboard.data import latency_percentiles, numeric_metrics
 from eaiv.dashboard.runs import all_sources
 from eaiv.dashboard.ui import components as ui
@@ -132,6 +133,7 @@ def render(workspace: Workspace) -> None:
     decision = decide(report, insights)
     ui.verdict_banner(decision, source.label)
     ui.provenance_note(source.provenance)
+    st.caption(authorship_summary(report).note)
 
     if source.kind == "legacy":
         st.caption(
@@ -209,25 +211,10 @@ def render(workspace: Workspace) -> None:
             width="stretch",
             hide_index=True,
         )
-        inputs = meta.get("inputs") or {}
+        inputs = input_rows(report)
         if inputs:
             st.markdown("**Inputs**")
-            st.dataframe(
-                pd.DataFrame(
-                    [
-                        {
-                            "Input": key,
-                            "Path": value.get("path", ""),
-                            "Present": "yes" if value.get("exists") else "no",
-                            "SHA-256": (value.get("sha256") or "")[:16],
-                            "Size": value.get("size_bytes", ""),
-                        }
-                        for key, value in inputs.items()
-                    ]
-                ),
-                width="stretch",
-                hide_index=True,
-            )
+            st.dataframe(pd.DataFrame(inputs), width="stretch", hide_index=True)
         thresholds = meta.get("thresholds") or {}
         if thresholds:
             st.markdown("**Thresholds applied**")

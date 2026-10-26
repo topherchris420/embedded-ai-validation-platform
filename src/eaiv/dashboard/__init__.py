@@ -5,14 +5,22 @@ typed, unit-tested, and reusable by any front end — the bundled Streamlit
 app under ``eaiv.dashboard.ui`` is just one consumer.
 
 Modules:
-    data     — report loading and metric shaping (legacy-compatible)
-    runs     — recorded runs and legacy reports as uniform sources
-    signals  — telemetry timing/statistics analysis
-    safety   — path and upload guards for browser-supplied input
+    data       — report loading and metric shaping (legacy-compatible)
+    runs       — recorded runs and legacy reports as uniform sources
+    authorship — declared firmware authorship as table cells and captions
+    signals    — telemetry timing/statistics analysis
+    safety     — path and upload guards for browser-supplied input
 """
 
 from __future__ import annotations
 
+from eaiv.dashboard.authorship import (
+    AuthorshipSummary,
+    authorship_by_run,
+    authorship_comparison_caption,
+    authorship_summary,
+    input_rows,
+)
 from eaiv.dashboard.data import (
     latency_percentiles,
     load_reports,
@@ -56,6 +64,7 @@ def load_report_source(path: str) -> dict:
 
 __all__ = [
     "ActivityPoint",
+    "AuthorshipSummary",
     "OrientationError",
     "PathPolicy",
     "ReportSource",
@@ -66,7 +75,11 @@ __all__ = [
     "all_sources",
     "analyze_sampling",
     "analyze_signal",
+    "authorship_by_run",
+    "authorship_comparison_caption",
+    "authorship_summary",
     "group_signals",
+    "input_rows",
     "last_successful",
     "latency_percentiles",
     "legacy_sources",

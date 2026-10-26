@@ -24,6 +24,7 @@ from eaiv.core.comparison import (
     to_markdown,
 )
 from eaiv.core.metrics import format_value
+from eaiv.dashboard.authorship import authorship_comparison_caption
 from eaiv.dashboard.runs import ReportSource, all_sources
 from eaiv.dashboard.ui import components as ui
 from eaiv.dashboard.ui.state import Workspace, goto
@@ -191,6 +192,7 @@ def render(workspace: Workspace) -> None:
     elif not comparison.issues:
         st.success(f"**{level.label}**")
 
+    st.caption(authorship_comparison_caption(baseline_report, current_report))
     if comparison.compatibility.issues:
         st.dataframe(
             pd.DataFrame(
