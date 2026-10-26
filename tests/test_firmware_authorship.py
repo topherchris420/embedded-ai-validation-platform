@@ -5,7 +5,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import pytest
+from click.testing import CliRunner
+
+from eaiv.cli import _load_all_plugins, main
 from eaiv.config import Config
+from eaiv.configspec import validate_config
 from eaiv.configspec.schema import FIRMWARE_ORIGINS, default_config
 from eaiv.core.comparison import CompatibilityLevel, check_compatibility
 from eaiv.core.orchestrator import Orchestrator
@@ -153,6 +158,51 @@ def test_declaration_is_kept_without_a_binary_path(tmp_path):
 def test_no_binary_and_no_declaration_records_no_firmware_input(tmp_path):
     payload = _run_firmware(tmp_path, binary_origin="unknown")
     assert "firmware" not in payload["meta"]["inputs"]
+
+
+# -- config validation -----------------------------------------------------
+
+
+@pytest.mark.parametrize("value", ["AI-generated", "Human", "ai", ""])
+def test_invalid_origin_is_a_field_level_error(value):
+    _load_all_plugins()
+    result = validate_config({"target": {"kind": "sim", "binary_origin": value}}, check_paths=False)
+    issue = next(i for i in result.errors if i.path == "target.binary_origin")
+    assert repr(value) in issue.message
+    assert issue.hint == "Available: unknown, human, ai_assisted, ai_generated"
+    # Only the bad field is reported; nothing else in the config is blamed.
+    assert {i.path for i in result.errors} == {"target.binary_origin"}
+
+
+def test_non_string_origin_or_tool_is_a_type_error():
+    _load_all_plugins()
+    result = validate_config(
+        {"target": {"kind": "sim", "binary_origin": 1, "binary_origin_tool": ["Cursor"]}},
+        check_paths=False,
+    )
+    errors = {i.path: i.message for i in result.errors}
+    assert errors["target.binary_origin"].startswith("expected enum")
+    assert errors["target.binary_origin_tool"].startswith("expected string")
+
+
+@pytest.mark.parametrize("value", FIRMWARE_ORIGINS)
+def test_every_declared_origin_validates(value):
+    _load_all_plugins()
+    config = default_config("sim")
+    config["target"].update({"binary_origin": value, "binary_origin_tool": "Cursor"})
+    assert validate_config(config, check_paths=False).ok
+
+
+def test_cli_config_validate_rejects_an_invalid_origin(tmp_path):
+    path = tmp_path / "eaiv.yaml"
+    path.write_text("target:\n  kind: sim\n  binary_origin: AI-generated\n")
+    result = CliRunner().invoke(main, ["config", "validate", str(path), "--no-paths", "--json"])
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert not payload["ok"]
+    assert [i["path"] for i in payload["issues"] if i["severity"] == "error"] == [
+        "target.binary_origin"
+    ]
 
 
 # -- comparison ------------------------------------------------------------
