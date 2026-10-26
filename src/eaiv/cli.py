@@ -687,7 +687,7 @@ def config_presets(as_json: bool) -> None:
         return
     for preset in PRESETS:
         hardware = "hardware" if preset.requires_hardware else "no hardware"
-        click.echo(f"{preset.id:<20} {preset.suite:<9} {hardware:<12} {preset.title}")
+        click.echo(f"{preset.id:<20} {preset.suite:<12} {hardware:<12} {preset.title}")
         click.echo(f"{'':<20} {preset.summary}")
 
 

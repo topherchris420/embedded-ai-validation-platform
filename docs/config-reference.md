@@ -36,8 +36,9 @@ configuration and appears in the UI without any change here.
 ## Mission presets
 
 `eaiv config presets` lists ready-made starting points (simulator smoke
-test, full simulated release gate, firmware-only, TinyML benchmark,
-sensor-fusion accuracy, HIL robustness, real-time deadlines, custom).
+test, full simulated release gate, firmware-only, AI-written firmware
+review, TinyML benchmark, sensor-fusion accuracy, HIL robustness, real-time
+deadlines, custom).
 Mission Control's **New run** page starts from one, and **Save mission**
 writes an ordinary config — plus a `mission:` block recording the suite
 selection, baseline, and preset — into `missions/`. `eaiv pipeline --config`
