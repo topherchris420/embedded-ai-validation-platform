@@ -69,8 +69,10 @@ eaiv runs compare <reference-id> <candidate-id> --format json
 
 A successful comparison exits `0`; a blocked comparison exits `1`. Invalid
 CLI syntax is a usage error. JSON includes `passed`, `issues` (code, message,
-suite, metric), compatibility, counts, and per-metric changes. Output is still
-written when the gate fails.
+suite, metric), compatibility, counts, `firmware_authorship` (each side's
+declared `origin` and `tool`), and per-metric changes. Markdown adds a
+declared-authorship line under the header when either side declares one.
+Output is still written when the gate fails.
 
 A percentage change from zero to a nonzero value is mathematically undefined.
 The directional gate still catches worsening, and JSON represents the percentage

@@ -269,6 +269,14 @@ class RunComparison:
     changes: list[MetricChange] = field(default_factory=list)
     max_regression_pct: float = 10.0
     issues: list[GateIssue] = field(default_factory=list)
+    #: Declared firmware authorship per side (``{"origin", "tool"}``), as
+    #: recorded; a declaration for review, never an input to the gate.
+    authorship: dict[str, dict[str, str]] = field(
+        default_factory=lambda: {
+            "baseline": {"origin": "unknown", "tool": ""},
+            "current": {"origin": "unknown", "tool": ""},
+        }
+    )
 
     @property
     def passed(self) -> bool:
@@ -451,20 +459,37 @@ def compare_runs(
         changes=changes,
         max_regression_pct=max_regression_pct,
         issues=regression.issues,
+        authorship={"baseline": firmware_authorship(base), "current": firmware_authorship(curr)},
     )
 
 
 # -- exports ---------------------------------------------------------------
 
 
+def _md_cell(text: Any) -> str:
+    """Text safe inside one Markdown table cell (or one line)."""
+    return " ".join(str(text).split()).replace("|", "\\|")
+
+
 def to_markdown(comparison: RunComparison) -> str:
     """Render a comparison as a PR-ready Markdown document."""
+    base_authorship = comparison.authorship["baseline"]
+    curr_authorship = comparison.authorship["current"]
+    declared = base_authorship["origin"] != "unknown" or curr_authorship["origin"] != "unknown"
     lines = [
         "# Validation comparison",
         "",
         f"Baseline: `{comparison.baseline_label}`  ",
         f"Current: `{comparison.current_label}`  ",
-        f"Compatibility: **{comparison.compatibility.level.label}**",
+        f"Compatibility: **{comparison.compatibility.level.label}**" + ("  " if declared else ""),
+    ]
+    if declared:
+        lines.append(
+            "Declared firmware authorship: baseline "
+            f"{_md_cell(describe_firmware_authorship(base_authorship))} · current "
+            f"{_md_cell(describe_firmware_authorship(curr_authorship))}"
+        )
+    lines += [
         "",
         f"**Recommendation:** {comparison.recommendation}",
         "",
@@ -477,9 +502,8 @@ def to_markdown(comparison: RunComparison) -> str:
             "|-------|----------|---------|----------------|",
         ]
         for issue in comparison.compatibility.issues:
-            lines.append(
-                f"| {issue.field} | {issue.baseline} | {issue.current} | {issue.explanation} |"
-            )
+            cells = (issue.field, issue.baseline, issue.current, issue.explanation)
+            lines.append("| " + " | ".join(_md_cell(c) for c in cells) + " |")
         lines.append("")
 
     if comparison.issues:
@@ -542,6 +566,7 @@ def to_json(comparison: RunComparison) -> str:
         "issues": [i.to_dict() for i in comparison.issues],
         "recommendation": comparison.recommendation,
         "counts": comparison.counts,
+        "firmware_authorship": comparison.authorship,
         "changes": [c.to_dict() for c in comparison.changes],
     }
     return json.dumps(payload, indent=2, allow_nan=False)
