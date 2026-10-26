@@ -20,11 +20,17 @@ original synchronous behaviour exactly.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 from eaiv.benchmarks.memory import MemoryBenchmark
 from eaiv.config import Config
-from eaiv.core.report_schema import REPORT_SCHEMA_VERSION, file_identity
+from eaiv.core.report_schema import (
+    FIRMWARE_ORIGINS,
+    REPORT_SCHEMA_VERSION,
+    file_identity,
+    firmware_origin,
+)
 from eaiv.core.reporter import PublishedReport, Reporter
 from eaiv.core.results import AggregateResult, SuiteResult
 from eaiv.firmware.tester import FirmwareTester
@@ -39,6 +45,8 @@ from eaiv.targets import build_target
 from eaiv.tinyml.benchmark import TinyMLBenchmark
 
 __all__ = ["BUILTIN_SUITES", "AggregateResult", "Orchestrator", "SuiteResult"]
+
+log = logging.getLogger("eaiv.orchestrator")
 
 BUILTIN_SUITES = ("firmware", "tinyml", "fusion", "hil", "memory", "rt")
 
@@ -235,10 +243,12 @@ class Orchestrator:
         firmware = target_cfg.get("binary")
         if firmware:
             inputs["firmware"] = file_identity(firmware)
-            inputs["firmware"]["authorship"] = {
-                "origin": str(target_cfg.get("binary_origin") or "unknown"),
-                "tool": str(target_cfg.get("binary_origin_tool") or ""),
-            }
+        authorship = _declared_authorship(target_cfg)
+        # A declaration is kept even when no binary path is configured (a
+        # board flashed beforehand); dropping it would turn a claim into
+        # "unknown" without saying so.
+        if firmware or authorship["origin"] != "unknown":
+            inputs.setdefault("firmware", {})["authorship"] = authorship
         dataset = self.cfg.get("sensor_fusion", {}).get("source")
         if dataset:
             inputs["dataset"] = file_identity(dataset)
@@ -270,6 +280,20 @@ class Orchestrator:
     @staticmethod
     def _needs_target(suite: str) -> bool:
         return suite in (*TARGET_SUITES, "all")
+
+
+def _declared_authorship(target_cfg: dict[str, Any]) -> dict[str, str]:
+    """``target.binary_origin``/``binary_origin_tool`` as recorded in the report."""
+    declared = target_cfg.get("binary_origin")
+    origin = firmware_origin(declared)
+    if declared not in (None, "") and origin != declared:
+        log.warning(
+            "target.binary_origin %r is not one of %s; recorded as 'unknown'",
+            declared,
+            ", ".join(FIRMWARE_ORIGINS),
+        )
+    tool = target_cfg.get("binary_origin_tool")
+    return {"origin": origin, "tool": tool.strip() if isinstance(tool, str) else ""}
 
 
 def _require(target: Target | None) -> Target:

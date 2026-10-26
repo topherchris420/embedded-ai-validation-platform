@@ -24,6 +24,7 @@ from eaiv.core.evidence import GateIssue, finite_number
 from eaiv.core.metrics import MetricInfo, format_value
 from eaiv.core.regression import MetricDelta, compare_reports
 from eaiv.core.report_schema import (
+    describe_firmware_authorship,
     firmware_authorship,
     metric_info,
     normalize_report,
@@ -159,17 +160,25 @@ def check_compatibility(baseline: dict[str, Any], current: dict[str, Any]) -> Co
                 )
             )
 
-    base_origin = firmware_authorship(baseline)["origin"]
-    curr_origin = firmware_authorship(current)["origin"]
-    if "unknown" not in (base_origin, curr_origin) and base_origin != curr_origin:
+    base_authorship, curr_authorship = firmware_authorship(baseline), firmware_authorship(current)
+    if base_authorship["origin"] != curr_authorship["origin"]:
+        if "unknown" in (base_authorship["origin"], curr_authorship["origin"]):
+            explanation = (
+                "Firmware authorship is declared for only one of the runs, so whether it "
+                "changed is not known. The gate treats both runs alike."
+            )
+        else:
+            explanation = (
+                "The declared authorship of the firmware changed. The gate treats both runs "
+                "alike; review whether the new code's failure modes are covered by the suites "
+                "that ran."
+            )
         issues.append(
             CompatibilityIssue(
                 "Firmware authorship",
-                base_origin,
-                curr_origin,
-                "The declared authorship of the firmware changed. The gate treats both runs "
-                "alike; review whether the new code's failure modes are covered by the suites "
-                "that ran.",
+                describe_firmware_authorship(base_authorship),
+                describe_firmware_authorship(curr_authorship),
+                explanation,
             )
         )
 

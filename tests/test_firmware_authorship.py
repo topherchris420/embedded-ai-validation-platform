@@ -9,9 +9,10 @@ from eaiv.config import Config
 from eaiv.configspec.schema import FIRMWARE_ORIGINS, default_config
 from eaiv.core.comparison import CompatibilityLevel, check_compatibility
 from eaiv.core.orchestrator import Orchestrator
-from eaiv.core.report_schema import firmware_authorship
+from eaiv.core.report_schema import firmware_authorship, firmware_device_evidence
 from eaiv.insights import generate_insights
-from eaiv.insights.models import Severity
+from eaiv.insights.models import Confidence, Severity
+from eaiv.insights.verdict import Verdict, decide
 
 
 def _report(
@@ -106,6 +107,44 @@ def test_legacy_or_malformed_reports_read_as_unknown():
     assert firmware_authorship(broken)["origin"] == "unknown"
 
 
+def test_unrecognised_origin_reads_as_unknown_not_as_a_guess():
+    for value in ("AI-generated", "ai", "Human", 3, None):
+        report = _report("human")
+        report["meta"]["inputs"]["firmware"]["authorship"]["origin"] = value
+        assert firmware_authorship(report)["origin"] == "unknown"
+
+
+def _run_firmware(tmp_path, **target: Any) -> dict[str, Any]:
+    cfg = Config(
+        {
+            "target": {"kind": "sim", "sim": {"telemetry_lines": 3}, **target},
+            "firmware": {"timeout_s": 1, "retries": 0, "pass_patterns": ["ALL_TESTS_OK"]},
+        }
+    )
+    Orchestrator(cfg, report_dir=str(tmp_path)).run("firmware")
+    payload: dict[str, Any] = json.loads((tmp_path / "latest.json").read_text())
+    return payload
+
+
+def test_orchestrator_records_unrecognised_origin_as_unknown(tmp_path, caplog):
+    payload = _run_firmware(tmp_path, binary="fw.elf", binary_origin="AI-generated")
+    assert payload["meta"]["inputs"]["firmware"]["authorship"]["origin"] == "unknown"
+    assert "binary_origin 'AI-generated'" in caplog.text
+
+
+def test_declaration_is_kept_without_a_binary_path(tmp_path):
+    payload = _run_firmware(tmp_path, binary_origin="ai_generated", binary_origin_tool=" Cursor ")
+    assert payload["meta"]["inputs"]["firmware"] == {
+        "authorship": {"origin": "ai_generated", "tool": "Cursor"}
+    }
+    assert firmware_authorship(payload)["origin"] == "ai_generated"
+
+
+def test_no_binary_and_no_declaration_records_no_firmware_input(tmp_path):
+    payload = _run_firmware(tmp_path, binary_origin="unknown")
+    assert "firmware" not in payload["meta"]["inputs"]
+
+
 # -- comparison ------------------------------------------------------------
 
 
@@ -117,10 +156,24 @@ def test_authorship_change_is_a_non_blocking_caveat():
     assert compatibility.level is CompatibilityLevel.CAVEATED
 
 
-def test_unknown_on_either_side_adds_no_caveat():
-    for base, curr in (("unknown", "ai_assisted"), (None, "human"), ("human", "human")):
+def test_same_or_both_unknown_authorship_adds_no_caveat():
+    for base, curr in (("human", "human"), ("unknown", None), (None, None)):
         compatibility = check_compatibility(_report(base), _report(curr))
         assert all(i.field != "Firmware authorship" for i in compatibility.issues)
+
+
+def test_one_sided_declaration_is_a_caveat_not_a_match():
+    for base, curr in (("ai_generated", None), ("unknown", "ai_assisted"), (None, "human")):
+        compatibility = check_compatibility(_report(base), _report(curr))
+        issue = next(i for i in compatibility.issues if i.field == "Firmware authorship")
+        assert not issue.blocking
+        assert "only one of the runs" in issue.explanation
+
+
+def test_caveat_names_the_declared_tool():
+    compatibility = check_compatibility(_report("human"), _report("ai_assisted", tool="Cursor"))
+    issue = next(i for i in compatibility.issues if i.field == "Firmware authorship")
+    assert (issue.baseline, issue.current) == ("human", "ai_assisted (Cursor)")
 
 
 # -- insights --------------------------------------------------------------
@@ -134,14 +187,38 @@ def test_ai_firmware_validated_only_in_simulation_gets_a_finding():
     labels = {e.label: e.value for e in finding.evidence}
     assert labels["Declared authorship"] == "ai_generated"
     assert labels["Tool"] == "Copilot"
-    assert labels["Firmware suite provenance"] == "simulated"
+    assert labels["Firmware suite evidence"] == "simulated/simulator"
+    # Half declaration, half recorded provenance: not a measurement.
+    assert finding.confidence is Confidence.DERIVED
+    assert "physical target" in finding.action.summary
+    assert "HIL" not in finding.action.summary
 
 
 def test_ai_firmware_without_a_firmware_suite_is_flagged():
     insights = generate_insights(_report("ai_assisted", with_firmware_suite=False))
     finding = next(i for i in insights if i.id == "ai-firmware-not-on-device")
     labels = {e.label: e.value for e in finding.evidence}
-    assert labels["Firmware suite provenance"] == "firmware suite did not run"
+    assert labels["Firmware suite evidence"] == "firmware suite did not run"
+
+
+def test_firmware_suite_without_numeric_metrics_is_not_device_evidence():
+    report = _report("ai_generated", provenance="measured", source="device", kind="serial")
+    report["suites"][0]["metrics"] = {"target": "board"}
+    assert firmware_device_evidence(report) == (
+        False,
+        "firmware suite recorded no numeric metrics",
+    )
+    assert "ai-firmware-not-on-device" in _ids(report)
+
+
+def test_measured_on_the_host_is_not_device_evidence():
+    finding = next(
+        i
+        for i in generate_insights(_report("ai_assisted", provenance="measured", source="host"))
+        if i.id == "ai-firmware-not-on-device"
+    )
+    labels = {e.label: e.value for e in finding.evidence}
+    assert labels["Firmware suite evidence"] == "measured/host"
 
 
 def test_ai_firmware_measured_on_device_gets_no_finding():
@@ -152,3 +229,36 @@ def test_ai_firmware_measured_on_device_gets_no_finding():
 def test_human_or_unknown_firmware_gets_no_finding():
     for origin in ("human", "unknown", None):
         assert "ai-firmware-not-on-device" not in _ids(_report(origin))
+
+
+# -- release verdict -------------------------------------------------------
+
+
+def _device_report_without_firmware_suite(origin: str | None) -> dict[str, Any]:
+    report = _report(origin, kind="serial", with_firmware_suite=False)
+    report["suites"] = [
+        {
+            "name": "tinyml",
+            "passed": True,
+            "metrics": {"latency_p99_ms": 4.0},
+            "notes": "",
+            "metric_meta": {"latency_p99_ms": {"provenance": "measured", "source": "device"}},
+        }
+    ]
+    return report
+
+
+def test_authorship_never_blocks_a_release_by_itself():
+    for origin in ("human", "ai_assisted", "ai_generated"):
+        for report in (_report(origin), _device_report_without_firmware_suite(origin)):
+            assert decide(report).verdict is not Verdict.DO_NOT_SHIP
+
+
+def test_ai_declaration_holds_a_device_run_at_further_validation():
+    # The firmware itself was never exercised, so the open finding keeps
+    # the verdict amber; the same run declared human-written ships.
+    assert decide(_device_report_without_firmware_suite("human")).verdict is Verdict.SHIP
+    assert decide(_device_report_without_firmware_suite(None)).verdict is Verdict.SHIP
+    decision = decide(_device_report_without_firmware_suite("ai_generated"))
+    assert decision.verdict is Verdict.SHIP_WITH_RISK
+    assert [i.id for i in decision.risks] == ["ai-firmware-not-on-device"]

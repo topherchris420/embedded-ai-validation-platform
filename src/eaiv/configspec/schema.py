@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from eaiv.core.report_schema import AI_FIRMWARE_ORIGINS, FIRMWARE_ORIGINS
+
 
 class FieldType(StrEnum):
     STRING = "string"
@@ -29,14 +31,6 @@ class FieldType(StrEnum):
     ENUM = "enum"
     LIST = "list"
     MAPPING = "mapping"
-
-
-#: Declared authorship of the firmware under test (``target.binary_origin``).
-#: ``ai_assisted`` means a person wrote or substantially revised the code
-#: with an AI tool; ``ai_generated`` means an AI tool produced it and a
-#: person reviewed it. ``unknown`` is the default and makes no claim.
-FIRMWARE_ORIGINS: tuple[str, ...] = ("unknown", "human", "ai_assisted", "ai_generated")
-AI_FIRMWARE_ORIGINS: frozenset[str] = frozenset({"ai_assisted", "ai_generated"})
 
 
 @dataclass(frozen=True)

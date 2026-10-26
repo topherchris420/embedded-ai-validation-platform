@@ -19,7 +19,7 @@ useful in simulation. Target-device readiness requires measured device data.
 | Mock values on either side | Informational deltas; provenance changes still fail |
 | New candidate metric | Show as added; it has no baseline yet |
 | Input hashes or platform version differ | Show compatibility caveats for review |
-| Declared firmware authorship differs (neither side `unknown`) | Show a compatibility caveat for review |
+| Declared firmware authorship differs, or is declared on one side only | Show a compatibility caveat for review |
 | Legacy baseline without metric metadata | Allow comparison using inferred definitions; retain provenance caveats |
 
 The numeric allowance must be finite and non-negative. A metric's explicit
@@ -35,17 +35,22 @@ metrics do not establish performance guarantees.
 
 `target.binary_origin` records how the firmware source was written:
 `human`, `ai_assisted`, `ai_generated`, or `unknown` (the default). It is the
-engineer's declaration, stored with the firmware's identity; EAIV does not
-detect it and does not gate on it.
+engineer's declaration, stored with the firmware's identity in
+`meta.inputs.firmware.authorship`. EAIV does not detect it and does not gate
+on it. A value outside those four is recorded and read as `unknown`, as are
+reports written before the field existed. The declaration is recorded even
+when `target.binary` is not set.
 
-It has two effects. A comparison where the declared authorship changed shows
-a non-blocking caveat. And a run whose firmware is declared `ai_assisted` or
-`ai_generated`, but whose firmware evidence did not come from a physical
-target, gets a medium-severity finding (`ai-firmware-not-on-device`). AI
-coding assistants can now produce hardware-aware driver code; the defects
-that survive review (timing, interrupt ordering, peripheral state, power
-modes) are the ones that tend to surface only on the device. The finding does
-not block a release by itself.
+It has two effects. A comparison shows a non-blocking caveat when the
+declared authorship differs between the runs, including when only one run
+declares it. And a run whose firmware is declared `ai_assisted` or
+`ai_generated`, but whose firmware suite numbers were not measured on the
+device, gets a medium-severity finding (`ai-firmware-not-on-device`). Timing,
+interrupt ordering, peripheral state and power-mode defects are the ones a
+code review is least likely to catch, and they need the hardware to show.
+The finding never blocks a release by itself. Like any open medium-severity
+finding, it keeps an otherwise device-measured run at "Further validation
+required" until the firmware suite has device evidence.
 
 ## CI and review exports
 
