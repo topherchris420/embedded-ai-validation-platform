@@ -157,6 +157,7 @@ Requires Python 3.12+. Firmware builds additionally require PlatformIO
 ```bash
 # Suite execution (exit code 0 iff all suites pass)
 eaiv run --config <cfg> --suite firmware|tinyml|fusion|hil|memory|rt|all
+eaiv run --config <cfg> --suite firmware,rt   # several suites, comma-separated
 
 # End-to-end pipeline with per-stage results and regression gate
 eaiv pipeline --config <cfg> [--build-env esp32] [--baseline NAME]

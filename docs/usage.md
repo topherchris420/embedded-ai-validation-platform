@@ -29,6 +29,7 @@ sudo apt-get install qemu-system-arm
 eaiv run --config configs/default.yaml --suite all
 eaiv run --config configs/sim.yaml --suite firmware   # hardware-free
 eaiv run --config configs/default.yaml --suite hil    # fault-injection run
+eaiv run --config configs/stm32h7.yaml --suite firmware,rt  # several suites, comma-separated
 eaiv show --config configs/stm32h7.yaml     # print resolved config as JSON
 eaiv plugins                                # list all registered plugins
 eaiv targets                                # list target backends only

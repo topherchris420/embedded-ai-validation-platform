@@ -33,6 +33,7 @@ from eaiv.core.report_schema import (
 )
 from eaiv.core.reporter import PublishedReport, Reporter
 from eaiv.core.results import AggregateResult, SuiteResult
+from eaiv.core.selection import split_suite_selection
 from eaiv.firmware.tester import FirmwareTester
 from eaiv.hil.suite import HILExperiment
 from eaiv.plugins import get_registry
@@ -98,16 +99,25 @@ class Orchestrator:
         return set(BUILTIN_SUITES) | set(extra) | {"all"}
 
     def selected_suites(self, suite: str) -> list[str]:
-        """Expand a suite selection into the concrete suites that will run."""
+        """Expand a suite selection into the concrete suites that will run.
+
+        ``suite`` is ``all``, one suite, or a comma-separated list such as
+        ``firmware,rt``; suites run in the orchestrator's order regardless.
+        """
         extra: dict = self.cfg.get("extra_suites", {}) or {}
-        if suite != "all":
-            return [suite]
-        return [*BUILTIN_SUITES, *extra]
+        parts = split_suite_selection(suite)
+        if parts == ["all"]:
+            return [*BUILTIN_SUITES, *extra]
+        return [name for name in (*BUILTIN_SUITES, *extra) if name in parts]
 
     def run(self, suite: str) -> AggregateResult:
         known = self.known_suites()
-        if suite not in known:
-            raise ValueError(f"Unknown suite: {suite!r}. Available: {sorted(known)}")
+        unknown = [name for name in split_suite_selection(suite) if name not in known]
+        if unknown:
+            raise ValueError(
+                f"Unknown suite: {', '.join(map(repr, unknown))}. Available: {sorted(known)}"
+            )
+        selected = set(self.selected_suites(suite))
 
         results = AggregateResult()
         target = build_target(self.cfg["target"]) if self._needs_target(suite) else None
@@ -134,13 +144,13 @@ class Orchestrator:
                 "rt": lambda: RTProfiler(self.cfg["rt_perf"], _require(target)).run(),
             }
             for name, builder in builders.items():
-                if suite in (name, "all"):
+                if name in selected:
                     self._run_suite(results, name, builder)
 
             registry = get_registry()
             extra: dict = self.cfg.get("extra_suites", {}) or {}
             for name, spec in extra.items():
-                if suite not in (name, "all"):
+                if name not in selected:
                     continue
 
                 def _make(name: str = name, spec: Any = spec) -> SuiteResult:
@@ -279,7 +289,7 @@ class Orchestrator:
 
     @staticmethod
     def _needs_target(suite: str) -> bool:
-        return suite in (*TARGET_SUITES, "all")
+        return any(name in (*TARGET_SUITES, "all") for name in split_suite_selection(suite))
 
 
 def _declared_authorship(target_cfg: dict[str, Any]) -> dict[str, str]:
