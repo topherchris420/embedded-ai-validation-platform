@@ -19,6 +19,7 @@ useful in simulation. Target-device readiness requires measured device data.
 | Mock values on either side | Informational deltas; provenance changes still fail |
 | New candidate metric | Show as added; it has no baseline yet |
 | Input hashes or platform version differ | Show compatibility caveats for review |
+| Declared firmware authorship differs, or is declared on one side only | Show a compatibility caveat for review |
 | Legacy baseline without metric metadata | Allow comparison using inferred definitions; retain provenance caveats |
 
 The numeric allowance must be finite and non-negative. A metric's explicit
@@ -29,6 +30,28 @@ and review its coverage when the workload changes.
 An optional suite skipped in both runs is still skipped coverage, not a new
 regression. The readiness verdict warns about incomplete evidence. Informational
 metrics do not establish performance guarantees.
+
+## Declared firmware authorship
+
+`target.binary_origin` records how the firmware source was written:
+`human`, `ai_assisted`, `ai_generated`, or `unknown` (the default). It is the
+engineer's declaration, stored with the firmware's identity in
+`meta.inputs.firmware.authorship`. EAIV does not detect it and does not gate
+on it. A value outside those four is recorded and read as `unknown`, as are
+reports written before the field existed. The declaration is recorded even
+when `target.binary` is not set.
+
+It has two effects. A comparison shows a non-blocking caveat when the
+declared authorship differs between the runs, including when only one run
+declares it. And a run whose firmware is declared `ai_assisted` or
+`ai_generated`, but whose firmware suite numbers were not measured on the
+device, gets a medium-severity finding (`ai-firmware-not-on-device`). Timing,
+interrupt ordering, peripheral state and power-mode defects are the ones a
+code review is least likely to catch, and they need the hardware to show.
+The finding never blocks a release by itself. Like any open medium-severity
+finding, it keeps an otherwise device-measured run at "Further validation
+required" until the firmware suite has device evidence. The reasoning is in
+[ADR 0003](adr/0003-declared-firmware-authorship.md).
 
 ## CI and review exports
 
@@ -46,8 +69,10 @@ eaiv runs compare <reference-id> <candidate-id> --format json
 
 A successful comparison exits `0`; a blocked comparison exits `1`. Invalid
 CLI syntax is a usage error. JSON includes `passed`, `issues` (code, message,
-suite, metric), compatibility, counts, and per-metric changes. Output is still
-written when the gate fails.
+suite, metric), compatibility, counts, `firmware_authorship` (each side's
+declared `origin` and `tool`), and per-metric changes. Markdown adds a
+declared-authorship line under the header when either side declares one.
+Output is still written when the gate fails.
 
 A percentage change from zero to a nonzero value is mathematically undefined.
 The directional gate still catches worsening, and JSON represents the percentage

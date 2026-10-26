@@ -36,8 +36,9 @@ configuration and appears in the UI without any change here.
 ## Mission presets
 
 `eaiv config presets` lists ready-made starting points (simulator smoke
-test, full simulated release gate, firmware-only, TinyML benchmark,
-sensor-fusion accuracy, HIL robustness, real-time deadlines, custom).
+test, full simulated release gate, firmware-only, AI-written firmware
+review, TinyML benchmark, sensor-fusion accuracy, HIL robustness, real-time
+deadlines, custom).
 Mission Control's **New run** page starts from one, and **Save mission**
 writes an ordinary config — plus a `mission:` block recording the suite
 selection, baseline, and preset — into `missions/`. `eaiv pipeline --config`
@@ -49,6 +50,8 @@ accepts it directly.
 |---|---|---|
 | `kind` | `qemu` \| `serial` \| `jlink` \| `sim` | Selects the backend (any registered `target` plugin). |
 | `binary` | path | ELF/binary to flash. |
+| `binary_origin` | `unknown` \| `human` \| `ai_assisted` \| `ai_generated` | Declared authorship of the firmware, recorded in `meta.inputs.firmware.authorship`. A declaration, not a detected property; `unknown` (default) makes no claim. `eaiv config validate` rejects other values; `eaiv run` records them as `unknown`. See [evidence gates](evidence-gates.md#declared-firmware-authorship). |
+| `binary_origin_tool` | string | Optional name of the AI tool involved (e.g. `Cursor`). Recorded only. |
 | `qemu.machine`, `qemu.cpu` | e.g. `mps2-an385`, `cortex-m3` | Passed to `qemu-system-arm -M`/`-cpu`. |
 | `serial.port`, `serial.baud` | e.g. `/dev/ttyACM0`, `115200` | pyserial connection params. |
 | `jlink.device`, `jlink.interface` | e.g. `STM32H743VI`, `swd` | Passed to pylink/JLinkExe. |

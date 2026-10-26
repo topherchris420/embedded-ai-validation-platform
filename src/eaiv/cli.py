@@ -50,7 +50,8 @@ def _load_config_or_fail(config_path: str) -> object:
     "--suite",
     default="all",
     help="Suite to run: firmware | tinyml | fusion | hil | memory | rt | all, "
-    "or any 'suite' plugin listed under extra_suites in the config.",
+    "or any 'suite' plugin listed under extra_suites in the config. "
+    "Several suites may be given comma-separated, e.g. firmware,rt.",
 )
 @click.option("--report-dir", default="reports", type=click.Path())
 def run(config_path: str, suite: str, report_dir: str) -> None:
@@ -606,7 +607,10 @@ def config_validate(config_path: str, suite: str, no_paths: bool, as_json: bool)
 
     _load_all_plugins()
     cfg = _load_config_or_fail(config_path)
-    result = validate_for_suite(cfg.raw, suite, check_paths=not no_paths)  # type: ignore[attr-defined]
+    try:
+        result = validate_for_suite(cfg.raw, suite, check_paths=not no_paths)  # type: ignore[attr-defined]
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--suite") from None
 
     if as_json:
         click.echo(
@@ -683,7 +687,7 @@ def config_presets(as_json: bool) -> None:
         return
     for preset in PRESETS:
         hardware = "hardware" if preset.requires_hardware else "no hardware"
-        click.echo(f"{preset.id:<20} {preset.suite:<9} {hardware:<12} {preset.title}")
+        click.echo(f"{preset.id:<20} {preset.suite:<12} {hardware:<12} {preset.title}")
         click.echo(f"{'':<20} {preset.summary}")
 
 

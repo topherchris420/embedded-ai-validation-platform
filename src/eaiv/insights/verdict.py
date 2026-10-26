@@ -14,7 +14,14 @@ from typing import Any
 
 from eaiv.core.evidence import report_issues
 from eaiv.core.metrics import MetricProvenance, MetricSource
-from eaiv.core.report_schema import metric_info, overall_provenance
+from eaiv.core.report_schema import (
+    AI_FIRMWARE_ORIGINS,
+    describe_firmware_authorship,
+    firmware_authorship,
+    firmware_device_evidence,
+    metric_info,
+    overall_provenance,
+)
 from eaiv.insights.models import Severity, ValidationInsight
 
 
@@ -68,6 +75,35 @@ def decide(
     insights: list[ValidationInsight] | None = None,
 ) -> ReleaseDecision:
     """Judge a run from its report and its insights."""
+    decision = _judge(report, insights)
+    # Declared authorship adds a reason, never a verdict: the line names
+    # the device evidence the firmware is missing.
+    note = _authorship_reason(report) if decision.verdict is not Verdict.UNKNOWN else None
+    if note:
+        decision.reasons.append(note)
+    return decision
+
+
+def _authorship_reason(report: dict[str, Any] | None) -> str | None:
+    """Why firmware declared AI-written lacks device evidence, if it does."""
+    if report is None:
+        return None
+    authorship = firmware_authorship(report)
+    if authorship["origin"] not in AI_FIRMWARE_ORIGINS:
+        return None
+    on_device, evidence = firmware_device_evidence(report)
+    if on_device:
+        return None
+    return (
+        f"Firmware declared {describe_firmware_authorship(authorship)} has no on-device "
+        f"evidence: {evidence}."
+    )
+
+
+def _judge(
+    report: dict[str, Any] | None,
+    insights: list[ValidationInsight] | None,
+) -> ReleaseDecision:
     if report is None or not report.get("suites"):
         return ReleaseDecision(
             Verdict.UNKNOWN,

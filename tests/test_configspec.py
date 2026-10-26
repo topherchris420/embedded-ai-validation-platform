@@ -239,6 +239,7 @@ def test_presets_cover_the_documented_missions():
         "sim-smoke",
         "sim-release-gate",
         "firmware-only",
+        "ai-firmware-review",
         "tinyml-benchmark",
         "fusion-accuracy",
         "hil-robustness",
@@ -250,6 +251,31 @@ def test_presets_cover_the_documented_missions():
 def test_only_the_hardware_preset_requires_hardware():
     assert get_preset("firmware-only").requires_hardware
     assert not get_preset("sim-release-gate").requires_hardware
+
+
+def test_ai_firmware_review_runs_firmware_and_rt_on_hardware():
+    from eaiv.config import Config
+    from eaiv.core.orchestrator import Orchestrator
+
+    preset = get_preset("ai-firmware-review")
+    assert preset.requires_hardware
+    assert preset.target_kind == "serial"
+    raw = preset.build()
+    assert Orchestrator(Config(raw)).selected_suites(preset.suite) == ["firmware", "rt"]
+    assert validate_for_suite(raw, preset.suite, check_paths=False).ok
+    assert "--suite firmware,rt" in preview_command("m.yaml", preset.suite)
+
+
+def test_ai_firmware_review_does_not_declare_authorship_for_you():
+    raw = get_preset("ai-firmware-review").build()
+    assert get_nested(raw, "target.binary_origin") == "unknown"
+
+
+def test_ai_firmware_review_says_what_it_does_not_establish():
+    answers = " ".join(get_preset("ai-firmware-review").answers)
+    assert "Not established" in answers
+    assert "synthetic" in answers  # rt without device telemetry is simulated
+    assert "HIL" in answers  # and HIL never exercises the firmware
 
 
 def test_unknown_preset_lists_the_available_ones():

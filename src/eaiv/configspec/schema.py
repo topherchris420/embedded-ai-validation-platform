@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from eaiv.core.report_schema import AI_FIRMWARE_ORIGINS, FIRMWARE_ORIGINS
+
 
 class FieldType(StrEnum):
     STRING = "string"
@@ -100,6 +102,26 @@ TARGET_SECTION = SectionSpec(
             default="build/firmware.elf",
             description="Firmware flashed before firmware/telemetry runs.",
             example="firmware/.pio/build/esp32/firmware.elf",
+        ),
+        FieldSpec(
+            key="binary_origin",
+            label="Firmware authorship",
+            type=FieldType.ENUM,
+            default="unknown",
+            choices=FIRMWARE_ORIGINS,
+            description=(
+                "How the firmware source was written, as declared by the engineer. Recorded "
+                "with the firmware identity; it is a declaration, not a detected property."
+            ),
+        ),
+        FieldSpec(
+            key="binary_origin_tool",
+            label="AI coding tool",
+            type=FieldType.STRING,
+            default="",
+            advanced=True,
+            description="Optional name of the assistant or agent involved, for the record.",
+            example="GitHub Copilot, Cursor, ModusToolbox AI Assistant",
         ),
         FieldSpec(
             key="serial.port",
@@ -668,7 +690,9 @@ class SectionView:
 
 
 __all__ = [
+    "AI_FIRMWARE_ORIGINS",
     "EXTRA_SUITES_SECTION",
+    "FIRMWARE_ORIGINS",
     "FIRMWARE_SECTION",
     "FUSION_SECTION",
     "HIL_SECTION",

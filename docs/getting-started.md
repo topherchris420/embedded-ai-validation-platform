@@ -95,6 +95,7 @@ eaiv config presets
 | `sim-smoke` | Does the firmware still boot and report a verdict? |
 | `sim-release-gate` | Would this change pass CI? Did anything regress? |
 | `firmware-only` | Does this build boot on real hardware? |
+| `ai-firmware-review` | Does firmware declared AI-written boot and meet its deadlines on the board? Runs `firmware,rt`; does not establish authorship or sensor-fusion robustness. |
 | `tinyml-benchmark` | How fast is this model, and how heavy is its tail? |
 | `fusion-accuracy` | How much orientation error does this filter accumulate? |
 | `hil-robustness` | How much accuracy is lost under degraded sensors? |

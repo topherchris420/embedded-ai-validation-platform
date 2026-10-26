@@ -123,6 +123,43 @@ PRESETS: tuple[MissionPreset, ...] = (
         },
     ),
     MissionPreset(
+        id="ai-firmware-review",
+        title="AI-written firmware review",
+        summary=(
+            "Firmware and real-time suites on a physical board, for firmware declared "
+            "ai_assisted or ai_generated. Set target.binary_origin yourself; the preset "
+            "does not declare it."
+        ),
+        suite="firmware,rt",
+        target_kind="serial",
+        requires_hardware=True,
+        answers=(
+            "Does this build boot and report a verdict on the board?",
+            "Do its periodic tasks meet their deadlines on the board? Only if the firmware "
+            "answers RT_PROFILE_START with TASK lines; otherwise the trace is synthetic and "
+            "recorded as simulated.",
+            "Not established: who wrote the code (that is your declaration), correctness "
+            "beyond these checks, or sensor-fusion robustness (HIL replays recorded data on "
+            "the host and is not part of this mission).",
+        ),
+        overlay={
+            "target": {"serial": {"port": "/dev/ttyACM0", "baud": 115200}},
+            "firmware": {"timeout_s": 30.0, "retries": 2},
+            "rt_perf": {
+                "task_set": [
+                    {"name": "control_loop", "period_ms": 5, "deadline_ms": 5, "wcet_budget_ms": 4},
+                    {
+                        "name": "inference",
+                        "period_ms": 100,
+                        "deadline_ms": 100,
+                        "wcet_budget_ms": 80,
+                    },
+                ],
+                "duration_s": 10.0,
+            },
+        },
+    ),
+    MissionPreset(
         id="tinyml-benchmark",
         title="TinyML performance benchmark",
         summary=(

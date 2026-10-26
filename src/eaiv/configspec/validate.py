@@ -26,6 +26,7 @@ from eaiv.configspec.schema import (
     get_nested,
     plugin_choices,
 )
+from eaiv.core.selection import split_suite_selection
 
 
 class Severity(StrEnum):
@@ -370,15 +371,17 @@ def validate_for_suite(
 
     Running just the fusion suite should not complain about a missing
     firmware ELF, so sections belonging to other suites are dropped.
+    ``suite`` may be a comma-separated list such as ``firmware,rt``.
     """
     result = validate_config(raw, check_paths=check_paths)
-    if suite == "all":
+    parts = split_suite_selection(suite)
+    if parts == ["all"]:
         return result
     relevant = {"target", "reporting"}
     for section in SCHEMA:
-        if section.suite == suite:
+        if section.suite in parts:
             relevant.add(section.name)
-    if suite not in {s.suite for s in SCHEMA if s.suite}:
+    if any(part not in {s.suite for s in SCHEMA if s.suite} for part in parts):
         relevant.add("extra_suites")
     return ValidationResult([i for i in result.issues if i.path.split(".", 1)[0] in relevant])
 

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from eaiv.core.evidence import report_issues
-from eaiv.core.metrics import MetricInfo, MetricProvenance, infer_metric_info
+from eaiv.core.metrics import MetricInfo, MetricProvenance, MetricSource, infer_metric_info
 
 #: Current on-disk report schema.
 #:  1 — original: timestamp, meta{eaiv_version,target}, suites[], all_passed
@@ -30,6 +30,14 @@ from eaiv.core.metrics import MetricInfo, MetricProvenance, infer_metric_info
 REPORT_SCHEMA_VERSION = 2
 
 LEGACY_SCHEMA_VERSION = 1
+
+#: Declared authorship of the firmware under test (``target.binary_origin``).
+#: ``human``: people wrote it. ``ai_assisted``: people wrote or substantially
+#: revised it with an AI tool. ``ai_generated``: an AI tool produced most of
+#: it. ``unknown`` is the default and makes no claim. None of these says
+#: whether the code was reviewed.
+FIRMWARE_ORIGINS: tuple[str, ...] = ("unknown", "human", "ai_assisted", "ai_generated")
+AI_FIRMWARE_ORIGINS: frozenset[str] = frozenset({"ai_assisted", "ai_generated"})
 
 
 def report_schema_version(payload: dict[str, Any]) -> int:
@@ -189,6 +197,76 @@ def file_identity(path: str | Path, max_hash_bytes: int = 256 * 1024 * 1024) -> 
     return identity
 
 
+def firmware_origin(value: Any) -> str:
+    """A declared authorship value, or ``unknown`` when it is not one.
+
+    Matching is exact: a misspelled declaration makes no claim rather
+    than a guessed one.
+    """
+    return value if isinstance(value, str) and value in FIRMWARE_ORIGINS else "unknown"
+
+
+def firmware_authorship(report: dict[str, Any]) -> dict[str, str]:
+    """Declared authorship of the firmware a report validated.
+
+    Returns ``{"origin": ..., "tool": ...}``. Reports written before
+    authorship was recorded, or with a malformed or unrecognised entry,
+    read as ``unknown`` — absence is never treated as a claim of human
+    authorship.
+    """
+    meta = report.get("meta")
+    inputs = meta.get("inputs") if isinstance(meta, dict) else None
+    firmware = inputs.get("firmware") if isinstance(inputs, dict) else None
+    entry = firmware.get("authorship") if isinstance(firmware, dict) else None
+    if not isinstance(entry, dict):
+        return {"origin": "unknown", "tool": ""}
+    tool = entry.get("tool")
+    return {
+        "origin": firmware_origin(entry.get("origin")),
+        "tool": tool.strip() if isinstance(tool, str) else "",
+    }
+
+
+def firmware_device_evidence(report: dict[str, Any]) -> tuple[bool, str]:
+    """Whether the firmware suite's numbers were measured on the device.
+
+    Returns ``(on_device, description)``. The description lists the
+    ``provenance/source`` pairs behind the suite's numeric metrics, or says
+    why there are none; no metrics is never on-device evidence.
+    """
+    suites = report.get("suites")
+    suite = next(
+        (
+            entry
+            for entry in (suites if isinstance(suites, list) else [])
+            if isinstance(entry, dict) and entry.get("name") == "firmware"
+        ),
+        None,
+    )
+    if suite is None:
+        return False, "firmware suite did not run"
+    metrics = suite.get("metrics")
+    infos = [
+        metric_info(report, "firmware", name)
+        for name, value in (metrics if isinstance(metrics, dict) else {}).items()
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    if not infos:
+        return False, "firmware suite recorded no numeric metrics"
+    on_device = all(
+        info.provenance is MetricProvenance.MEASURED and info.source is MetricSource.DEVICE
+        for info in infos
+    )
+    return on_device, ", ".join(sorted({f"{i.provenance}/{i.source}" for i in infos}))
+
+
+def describe_firmware_authorship(authorship: dict[str, str]) -> str:
+    """One-line form for tables and captions, e.g. ``ai_assisted (Cursor)``."""
+    origin = authorship.get("origin") or "unknown"
+    tool = authorship.get("tool") or ""
+    return f"{origin} ({tool})" if tool else origin
+
+
 def load_report_file(path: str | Path) -> dict[str, Any]:
     """Load and normalize a report file with a precise error message."""
     file = Path(path)
@@ -206,9 +284,15 @@ def load_report_file(path: str | Path) -> dict[str, Any]:
 
 
 __all__ = [
+    "AI_FIRMWARE_ORIGINS",
+    "FIRMWARE_ORIGINS",
     "LEGACY_SCHEMA_VERSION",
     "REPORT_SCHEMA_VERSION",
+    "describe_firmware_authorship",
     "file_identity",
+    "firmware_authorship",
+    "firmware_device_evidence",
+    "firmware_origin",
     "is_report",
     "load_report_file",
     "metric_info",

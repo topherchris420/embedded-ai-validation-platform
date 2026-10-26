@@ -14,6 +14,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from eaiv.dashboard.authorship import authorship_by_run
 from eaiv.dashboard.runs import all_sources, recent_activity
 from eaiv.dashboard.ui import components as ui
 from eaiv.dashboard.ui.state import Workspace, goto
@@ -279,6 +280,7 @@ def render(workspace: Workspace) -> None:
         points = recent_activity(store, limit=15)
         if len(points) >= 2:
             st.plotly_chart(_activity_chart(points), width="stretch")
+        authorship = authorship_by_run(sources)
         rows = []
         for manifest in manifests[:8]:
             tone = status_tone(str(manifest.status))
@@ -289,6 +291,7 @@ def render(workspace: Workspace) -> None:
                     "Status": tone.label,
                     "When": manifest.created_at[:16],
                     "Target": manifest.target_label,
+                    "Firmware authorship": authorship.get(manifest.run_id, "—"),
                 }
             )
         if rows:

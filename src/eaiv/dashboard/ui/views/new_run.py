@@ -30,6 +30,7 @@ from eaiv.configspec import (
 )
 from eaiv.configspec.schema import SCHEMA, SECTIONS_BY_NAME, SectionSpec
 from eaiv.core.orchestrator import BUILTIN_SUITES, SUITE_CONFIG_SECTION
+from eaiv.core.selection import selection_includes
 from eaiv.dashboard.ui import components as ui
 from eaiv.dashboard.ui.runner import LaunchSpec, get_launcher
 from eaiv.dashboard.ui.state import Workspace, goto
@@ -186,6 +187,8 @@ def _step_suites(config: dict[str, Any]) -> str:
     extra = list((config.get("extra_suites") or {}).keys())
     options = ["all", *BUILTIN_SUITES, *extra]
     current = st.session_state.get("mission_suite", "all")
+    if "," in current and current not in options:
+        options.append(current)  # a preset's multi-suite selection
     suite = st.radio(
         "Suite selection",
         options,
@@ -199,11 +202,9 @@ def _step_suites(config: dict[str, Any]) -> str:
         for name in BUILTIN_SUITES
         if SUITE_CONFIG_SECTION.get(name) in SECTIONS_BY_NAME
     }
-    if suite == "all":
-        for name, description in descriptions.items():
+    for name, description in descriptions.items():
+        if selection_includes(str(suite), name):
             st.caption(f"**{name}** — {description}")
-    elif suite in descriptions:
-        st.caption(descriptions[suite])
     return str(suite)
 
 
@@ -211,9 +212,7 @@ def _step_limits(config: dict[str, Any], suite: str, advanced: bool) -> None:
     st.markdown("#### 4 · Limits and fault scenarios")
     st.caption("These thresholds are what turn a measurement into a pass or a fail.")
     relevant = [
-        section
-        for section in SCHEMA
-        if section.suite and (suite == "all" or section.suite == suite)
+        section for section in SCHEMA if section.suite and selection_includes(suite, section.suite)
     ]
     for section in relevant:
         with st.expander(f"{section.title} — {section.description}", expanded=False):
