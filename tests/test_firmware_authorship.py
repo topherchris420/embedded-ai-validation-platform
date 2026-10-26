@@ -107,6 +107,16 @@ def test_legacy_or_malformed_reports_read_as_unknown():
     assert firmware_authorship(broken)["origin"] == "unknown"
 
 
+def test_malformed_report_shapes_read_as_unknown_without_raising():
+    for meta in ("not metadata", {"inputs": []}, {"inputs": {"firmware": "fw.elf"}}):
+        report = _report("ai_generated")
+        report["meta"] = meta
+        assert firmware_authorship(report)["origin"] == "unknown"
+    report = _report("ai_generated")
+    report["suites"] = "not a list"
+    assert firmware_device_evidence(report) == (False, "firmware suite did not run")
+
+
 def test_unrecognised_origin_reads_as_unknown_not_as_a_guess():
     for value in ("AI-generated", "ai", "Human", 3, None):
         report = _report("human")
@@ -262,3 +272,35 @@ def test_ai_declaration_holds_a_device_run_at_further_validation():
     decision = decide(_device_report_without_firmware_suite("ai_generated"))
     assert decision.verdict is Verdict.SHIP_WITH_RISK
     assert [i.id for i in decision.risks] == ["ai-firmware-not-on-device"]
+
+
+def test_verdict_names_the_missing_device_evidence():
+    decision = decide(_report("ai_generated", tool="Copilot"))
+    assert (
+        "Firmware declared ai_generated (Copilot) has no on-device evidence: "
+        "simulated/simulator." in decision.reasons
+    )
+    no_suite = decide(_device_report_without_firmware_suite("ai_assisted"))
+    assert (
+        "Firmware declared ai_assisted has no on-device evidence: firmware suite did not run."
+        in no_suite.reasons
+    )
+
+
+def test_verdict_adds_no_authorship_line_when_there_is_nothing_missing():
+    on_device = _report("ai_generated", provenance="measured", source="device", kind="serial")
+    for report in (on_device, _report("human"), _report(None)):
+        assert not any("Firmware declared" in r for r in decide(report).reasons)
+
+
+def test_authorship_reason_never_changes_the_verdict():
+    # Same insights in, same verdict out: only the reasons differ.
+    for build in (_report, _device_report_without_firmware_suite):
+        human, ai = build("human"), build("ai_generated")
+        insights = generate_insights(human)
+        assert decide(ai, insights).verdict is decide(human, insights).verdict
+    failed = _report("ai_generated")
+    failed["suites"][0]["passed"] = False
+    failed["all_passed"] = False
+    assert decide(failed).verdict is Verdict.DO_NOT_SHIP
+    assert any("Firmware declared" in r for r in decide(failed).reasons)

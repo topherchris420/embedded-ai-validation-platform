@@ -214,7 +214,8 @@ def firmware_authorship(report: dict[str, Any]) -> dict[str, str]:
     read as ``unknown`` — absence is never treated as a claim of human
     authorship.
     """
-    inputs = (report.get("meta") or {}).get("inputs") or {}
+    meta = report.get("meta")
+    inputs = meta.get("inputs") if isinstance(meta, dict) else None
     firmware = inputs.get("firmware") if isinstance(inputs, dict) else None
     entry = firmware.get("authorship") if isinstance(firmware, dict) else None
     if not isinstance(entry, dict):
@@ -233,10 +234,11 @@ def firmware_device_evidence(report: dict[str, Any]) -> tuple[bool, str]:
     ``provenance/source`` pairs behind the suite's numeric metrics, or says
     why there are none; no metrics is never on-device evidence.
     """
+    suites = report.get("suites")
     suite = next(
         (
             entry
-            for entry in report.get("suites") or []
+            for entry in (suites if isinstance(suites, list) else [])
             if isinstance(entry, dict) and entry.get("name") == "firmware"
         ),
         None,
