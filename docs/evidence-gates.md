@@ -19,6 +19,7 @@ useful in simulation. Target-device readiness requires measured device data.
 | Mock values on either side | Informational deltas; provenance changes still fail |
 | New candidate metric | Show as added; it has no baseline yet |
 | Input hashes or platform version differ | Show compatibility caveats for review |
+| Declared firmware authorship differs (neither side `unknown`) | Show a compatibility caveat for review |
 | Legacy baseline without metric metadata | Allow comparison using inferred definitions; retain provenance caveats |
 
 The numeric allowance must be finite and non-negative. A metric's explicit
@@ -29,6 +30,22 @@ and review its coverage when the workload changes.
 An optional suite skipped in both runs is still skipped coverage, not a new
 regression. The readiness verdict warns about incomplete evidence. Informational
 metrics do not establish performance guarantees.
+
+## Declared firmware authorship
+
+`target.binary_origin` records how the firmware source was written:
+`human`, `ai_assisted`, `ai_generated`, or `unknown` (the default). It is the
+engineer's declaration, stored with the firmware's identity; EAIV does not
+detect it and does not gate on it.
+
+It has two effects. A comparison where the declared authorship changed shows
+a non-blocking caveat. And a run whose firmware is declared `ai_assisted` or
+`ai_generated`, but whose firmware evidence did not come from a physical
+target, gets a medium-severity finding (`ai-firmware-not-on-device`). AI
+coding assistants can now produce hardware-aware driver code; the defects
+that survive review (timing, interrupt ordering, peripheral state, power
+modes) are the ones that tend to surface only on the device. The finding does
+not block a release by itself.
 
 ## CI and review exports
 

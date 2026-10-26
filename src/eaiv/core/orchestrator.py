@@ -231,9 +231,14 @@ class Orchestrator:
         model = self.cfg.get("tinyml", {}).get("model")
         if model:
             inputs["model"] = file_identity(model)
-        firmware = self.cfg.get("target", {}).get("binary")
+        target_cfg = self.cfg.get("target", {}) or {}
+        firmware = target_cfg.get("binary")
         if firmware:
             inputs["firmware"] = file_identity(firmware)
+            inputs["firmware"]["authorship"] = {
+                "origin": str(target_cfg.get("binary_origin") or "unknown"),
+                "tool": str(target_cfg.get("binary_origin_tool") or ""),
+            }
         dataset = self.cfg.get("sensor_fusion", {}).get("source")
         if dataset:
             inputs["dataset"] = file_identity(dataset)

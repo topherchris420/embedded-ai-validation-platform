@@ -16,10 +16,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from eaiv.configspec.schema import AI_FIRMWARE_ORIGINS
 from eaiv.core.evidence import report_issues
 from eaiv.core.metrics import MetricProvenance, MetricSource, format_value
 from eaiv.core.regression import RegressionReport
-from eaiv.core.report_schema import metric_info, normalize_report, overall_provenance
+from eaiv.core.report_schema import (
+    firmware_authorship,
+    metric_info,
+    normalize_report,
+    overall_provenance,
+)
 from eaiv.insights.models import (
     Confidence,
     Evidence,
@@ -772,6 +778,73 @@ def _provenance_insights(report: dict[str, Any]) -> list[ValidationInsight]:
     ]
 
 
+def _authorship_insights(report: dict[str, Any]) -> list[ValidationInsight]:
+    """Flag AI-written firmware whose evidence never touched a device.
+
+    Authorship is the engineer's declaration, recorded with the firmware
+    identity. It does not change any gate. It adds one finding when the
+    firmware suite's numbers did not come from the target, because the
+    defects most likely to slip past a code review (timing, interrupt
+    ordering, peripheral state, power modes) are the ones that only show
+    up on hardware.
+    """
+    authorship = firmware_authorship(report)
+    if authorship["origin"] not in AI_FIRMWARE_ORIGINS:
+        return []
+    firmware_metrics = [
+        metric
+        for metric, value in _metrics(report, "firmware").items()
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    on_device = bool(firmware_metrics) and all(
+        metric_info(report, "firmware", metric).provenance is MetricProvenance.MEASURED
+        and metric_info(report, "firmware", metric).source is MetricSource.DEVICE
+        for metric in firmware_metrics
+    )
+    if on_device:
+        return []
+    target = (report.get("meta") or {}).get("target") or {}
+    evidence = [
+        Evidence("Declared authorship", authorship["origin"]),
+        Evidence("Target", str(target.get("kind", "?"))),
+        Evidence(
+            "Firmware suite provenance",
+            ", ".join(
+                sorted(
+                    {str(metric_info(report, "firmware", m).provenance) for m in firmware_metrics}
+                )
+            )
+            or "firmware suite did not run",
+        ),
+    ]
+    if authorship["tool"]:
+        evidence.insert(1, Evidence("Tool", authorship["tool"]))
+    return [
+        ValidationInsight(
+            id="ai-firmware-not-on-device",
+            severity=Severity.MEDIUM,
+            category=InsightCategory.PROVENANCE,
+            title="AI-written firmware has not been exercised on the target device",
+            impact=(
+                "Timing, interrupt, peripheral and power-state defects in generated driver "
+                "code typically surface only on hardware. This run's firmware evidence did "
+                "not come from the device."
+            ),
+            evidence=tuple(evidence),
+            action=RecommendedAction(
+                summary=(
+                    "Run the firmware, HIL and real-time suites against a physical target "
+                    "before approving this build."
+                ),
+                config_path="target.kind",
+            ),
+            suite="firmware",
+            confidence=Confidence.MEASURED,
+            provenance=overall_provenance(report),
+        )
+    ]
+
+
 def _coverage_insights(
     report: dict[str, Any], manifest: RunManifest | None
 ) -> list[ValidationInsight]:
@@ -883,6 +956,7 @@ def generate_insights(
     insights += _improvement_insights(normalized, regression)
     insights += _coverage_insights(normalized, manifest)
     insights += _provenance_insights(normalized)
+    insights += _authorship_insights(normalized)
     return sort_insights(insights)
 
 

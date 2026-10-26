@@ -31,6 +31,14 @@ class FieldType(StrEnum):
     MAPPING = "mapping"
 
 
+#: Declared authorship of the firmware under test (``target.binary_origin``).
+#: ``ai_assisted`` means a person wrote or substantially revised the code
+#: with an AI tool; ``ai_generated`` means an AI tool produced it and a
+#: person reviewed it. ``unknown`` is the default and makes no claim.
+FIRMWARE_ORIGINS: tuple[str, ...] = ("unknown", "human", "ai_assisted", "ai_generated")
+AI_FIRMWARE_ORIGINS: frozenset[str] = frozenset({"ai_assisted", "ai_generated"})
+
+
 @dataclass(frozen=True)
 class FieldSpec:
     """One configurable field inside a section."""
@@ -100,6 +108,26 @@ TARGET_SECTION = SectionSpec(
             default="build/firmware.elf",
             description="Firmware flashed before firmware/telemetry runs.",
             example="firmware/.pio/build/esp32/firmware.elf",
+        ),
+        FieldSpec(
+            key="binary_origin",
+            label="Firmware authorship",
+            type=FieldType.ENUM,
+            default="unknown",
+            choices=FIRMWARE_ORIGINS,
+            description=(
+                "How the firmware source was written, as declared by the engineer. Recorded "
+                "with the firmware identity; it is a declaration, not a detected property."
+            ),
+        ),
+        FieldSpec(
+            key="binary_origin_tool",
+            label="AI coding tool",
+            type=FieldType.STRING,
+            default="",
+            advanced=True,
+            description="Optional name of the assistant or agent involved, for the record.",
+            example="GitHub Copilot, Cursor, ModusToolbox AI Assistant",
         ),
         FieldSpec(
             key="serial.port",
@@ -668,7 +696,9 @@ class SectionView:
 
 
 __all__ = [
+    "AI_FIRMWARE_ORIGINS",
     "EXTRA_SUITES_SECTION",
+    "FIRMWARE_ORIGINS",
     "FIRMWARE_SECTION",
     "FUSION_SECTION",
     "HIL_SECTION",

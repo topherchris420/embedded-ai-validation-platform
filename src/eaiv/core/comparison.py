@@ -23,7 +23,12 @@ from typing import Any
 from eaiv.core.evidence import GateIssue, finite_number
 from eaiv.core.metrics import MetricInfo, format_value
 from eaiv.core.regression import MetricDelta, compare_reports
-from eaiv.core.report_schema import metric_info, normalize_report, overall_provenance
+from eaiv.core.report_schema import (
+    firmware_authorship,
+    metric_info,
+    normalize_report,
+    overall_provenance,
+)
 
 
 class CompatibilityLevel(StrEnum):
@@ -153,6 +158,20 @@ def check_compatibility(baseline: dict[str, Any], current: dict[str, Any]) -> Co
                     "from the input rather than the code.",
                 )
             )
+
+    base_origin = firmware_authorship(baseline)["origin"]
+    curr_origin = firmware_authorship(current)["origin"]
+    if "unknown" not in (base_origin, curr_origin) and base_origin != curr_origin:
+        issues.append(
+            CompatibilityIssue(
+                "Firmware authorship",
+                base_origin,
+                curr_origin,
+                "The declared authorship of the firmware changed. The gate treats both runs "
+                "alike; review whether the new code's failure modes are covered by the suites "
+                "that ran.",
+            )
+        )
 
     base_suites = {s.get("name") for s in baseline.get("suites") or []}
     curr_suites = {s.get("name") for s in current.get("suites") or []}

@@ -189,6 +189,24 @@ def file_identity(path: str | Path, max_hash_bytes: int = 256 * 1024 * 1024) -> 
     return identity
 
 
+def firmware_authorship(report: dict[str, Any]) -> dict[str, str]:
+    """Declared authorship of the firmware a report validated.
+
+    Returns ``{"origin": ..., "tool": ...}``. Reports written before
+    authorship was recorded, or with a malformed entry, read as
+    ``unknown`` — absence is never treated as a claim of human authorship.
+    """
+    inputs = (report.get("meta") or {}).get("inputs") or {}
+    firmware = inputs.get("firmware") if isinstance(inputs, dict) else None
+    entry = firmware.get("authorship") if isinstance(firmware, dict) else None
+    if not isinstance(entry, dict):
+        return {"origin": "unknown", "tool": ""}
+    return {
+        "origin": str(entry.get("origin") or "unknown"),
+        "tool": str(entry.get("tool") or ""),
+    }
+
+
 def load_report_file(path: str | Path) -> dict[str, Any]:
     """Load and normalize a report file with a precise error message."""
     file = Path(path)
@@ -209,6 +227,7 @@ __all__ = [
     "LEGACY_SCHEMA_VERSION",
     "REPORT_SCHEMA_VERSION",
     "file_identity",
+    "firmware_authorship",
     "is_report",
     "load_report_file",
     "metric_info",

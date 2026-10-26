@@ -49,6 +49,8 @@ accepts it directly.
 |---|---|---|
 | `kind` | `qemu` \| `serial` \| `jlink` \| `sim` | Selects the backend (any registered `target` plugin). |
 | `binary` | path | ELF/binary to flash. |
+| `binary_origin` | `unknown` \| `human` \| `ai_assisted` \| `ai_generated` | Declared authorship of the firmware, recorded in `meta.inputs.firmware.authorship`. A declaration, not a detected property; `unknown` (default) makes no claim. See [evidence gates](evidence-gates.md#declared-firmware-authorship). |
+| `binary_origin_tool` | string | Optional name of the AI tool involved (e.g. `Cursor`). Recorded only. |
 | `qemu.machine`, `qemu.cpu` | e.g. `mps2-an385`, `cortex-m3` | Passed to `qemu-system-arm -M`/`-cpu`. |
 | `serial.port`, `serial.baud` | e.g. `/dev/ttyACM0`, `115200` | pyserial connection params. |
 | `jlink.device`, `jlink.interface` | e.g. `STM32H743VI`, `swd` | Passed to pylink/JLinkExe. |
