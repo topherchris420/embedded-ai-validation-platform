@@ -50,7 +50,8 @@ interrupt ordering, peripheral state and power-mode defects are the ones a
 code review is least likely to catch, and they need the hardware to show.
 The finding never blocks a release by itself. Like any open medium-severity
 finding, it keeps an otherwise device-measured run at "Further validation
-required" until the firmware suite has device evidence.
+required" until the firmware suite has device evidence. The reasoning is in
+[ADR 0003](adr/0003-declared-firmware-authorship.md).
 
 ## CI and review exports
 

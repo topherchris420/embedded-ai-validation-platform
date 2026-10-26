@@ -27,3 +27,7 @@ _Avoid_: Bus driver, I2C handle
 **Measurement Provenance**:
 The declared origin and certainty classification (`measured`, `simulated`, `estimated`, `mock`) attached to every validation metric.
 _Avoid_: Metric source type, data authenticity
+
+**Firmware Authorship**:
+The engineer's declaration (`unknown`, `human`, `ai_assisted`, `ai_generated`) of how the firmware under test was written, set in `target.binary_origin` and recorded with the firmware identity. A claim, not evidence: never inferred or detected, never a gate by itself, and `unknown` when not declared.
+_Avoid_: Firmware origin, code provenance, AI detection
