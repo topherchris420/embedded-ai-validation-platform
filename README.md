@@ -1,11 +1,10 @@
 # Embedded AI Validation Platform
 
-**Know what your embedded AI has actually proven.**
+**Follow a release decision back to the tests that support it.**
 
-EAIV turns firmware tests, TinyML benchmarks, sensor replays, power traces,
-and timing budgets into an auditable validation history. Run a mission,
-inspect the evidence, compare it with a known-good baseline, and see exactly
-what blocks the next release.
+Run a validation mission, compare its firmware tests, TinyML benchmarks,
+sensor replays, power traces, and timing budgets with a known-good baseline,
+and inspect what blocks the release. EAIV keeps the evidence together for review.
 
 Built by [Vers3Dynamics](https://vers3dynamics.com). Open source, hardware-aware,
 and runnable entirely in simulation.
@@ -18,7 +17,7 @@ and runnable entirely in simulation.
 Application areas: robotics, autonomous systems, industrial automation,
 medical devices, IoT, and edge-AI research.
 
-![Dashboard preview](docs/images/dashboard-preview.png)
+![EAIV Mission Control dashboard for reviewing release validation evidence](docs/images/dashboard-preview.png)
 
 *EAIV Mission Control — release verdict, run status, budget headroom, and
 the prioritized diagnosis, over a guided workflow that goes from choosing a
