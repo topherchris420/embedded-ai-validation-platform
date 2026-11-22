@@ -134,14 +134,14 @@ def render(workspace: Workspace) -> None:
         return
 
     meta = payload.get("meta") or {}
-    columns = st.columns(4)
-    with columns[0]:
+    summary_columns = st.columns(4)
+    with summary_columns[0]:
         ui.tile("Verdict", "PASS" if payload.get("all_passed") else "FAIL")
-    with columns[1]:
+    with summary_columns[1]:
         ui.tile("Suites", str(len(payload.get("suites") or [])))
-    with columns[2]:
+    with summary_columns[2]:
         ui.tile("Target", str((meta.get("target") or {}).get("name", "—")))
-    with columns[3]:
+    with summary_columns[3]:
         ui.tile("eaiv", str(meta.get("eaiv_version", "—")))
 
     st.dataframe(
@@ -178,9 +178,9 @@ def render(workspace: Workspace) -> None:
             )
             st.caption(comparison.recommendation)
             counts = comparison.counts
-            columns = st.columns(4)
+            comparison_columns = st.columns(4)
             for column, key in zip(
-                columns, ["regressed", "improved", "unchanged", "added"], strict=False
+                comparison_columns, ["regressed", "improved", "unchanged", "added"], strict=False
             ):
                 with column:
                     ui.tile(key.capitalize(), str(counts[key]))

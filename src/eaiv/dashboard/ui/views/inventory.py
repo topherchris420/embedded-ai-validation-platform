@@ -150,14 +150,14 @@ def render(workspace: Workspace) -> None:
     if diagnosis is None:
         st.caption("Equivalent command: `eaiv doctor`")
         return
-    columns = st.columns(3)
-    with columns[0]:
+    diagnostic_columns = st.columns(3)
+    with diagnostic_columns[0]:
         ui.tile("Checks", str(len(diagnosis.checks)))
-    with columns[1]:
+    with diagnostic_columns[1]:
         ui.tile(
             "Failures", str(len(diagnosis.failures)), tone_css="fail" if diagnosis.failures else ""
         )
-    with columns[2]:
+    with diagnostic_columns[2]:
         ui.tile("Warnings", str(len(diagnosis.warnings)))
     st.dataframe(
         pd.DataFrame(

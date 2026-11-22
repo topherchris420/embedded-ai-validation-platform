@@ -219,9 +219,9 @@ def render(workspace: Workspace) -> None:
     )
 
     counts = comparison.counts
-    columns = st.columns(6)
+    metric_columns = st.columns(6)
     for column, (label, key) in zip(
-        columns,
+        metric_columns,
         [
             ("Regressed", "regressed"),
             ("Improved", "improved"),
